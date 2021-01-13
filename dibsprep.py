@@ -62,7 +62,6 @@ def main(
 
     # look for subdirectories
     directory_paths = [e.path for e in os.scandir(path_to_scans) if e.is_dir()]
-    # print(directory_paths)
 
     for i in directory_paths:
         # create a list of TIFFs
@@ -77,8 +76,7 @@ def main(
                     )
                 tiff_paths.append(e.path)
                 sequence.append(int(e.name.split(".")[0].split("_")[-1]))
-        # print(tiff_paths)
-        # print(sequence)
+
         # report on sequence anomalies
         missing = find_missing(sequence)
         if missing:
@@ -96,7 +94,7 @@ def main(
         }
 
         # retrieve book metadata
-        # NOTE assuming directory name is barcode
+        # NOTE assuming directory name is a barcode number
         # NOTE assuming martian is installed
         if (
             os.system(
@@ -151,7 +149,6 @@ def main(
             ):
                 sys.exit(" ❌\t An error occurred running vips.")
             # create canvas metadata
-            # how to get image dimensions?
             # vipsheader -f width file.tiff
             # vipsheader -f height file.tiff
             width = os.popen(f"vipsheader -f width {f}").read().strip()
@@ -205,6 +202,7 @@ def main(
             }
             # add canvas to sequences
             manifest["sequences"][0]["canvases"].append(canvas)
+
         # save manifest.json
         with open(
             f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/manifest.json", "w"
