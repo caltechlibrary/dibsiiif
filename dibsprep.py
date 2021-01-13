@@ -16,6 +16,7 @@
 # - vips program not found
 # - supplied path to scans not valid
 # - no access to S3 bucket
+# - both .tif and .tiff extensions
 
 # given: a source directory
 # look for subdirectories
@@ -68,7 +69,7 @@ def main(
         tiff_paths = []
         sequence = []
         for e in os.scandir(i):
-            if e.is_file() and e.name.endswith(".tiff"):
+            if e.is_file() and e.name.endswith((".tif", ".tiff")):
                 # report on sequence anomalies
                 if not e.name.split(".")[0].split("_")[-1].isnumeric():
                     sys.exit(
@@ -139,11 +140,12 @@ def main(
         # loop through list of TIFFs
         tiff_paths.sort()
         for f in tiff_paths:
+            f = Path(f)
             # create compressed pyramid TIFF
             # vips tiffsave in.tiff out.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256
             if (
                 os.system(
-                    f"vips tiffsave {f} {PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{os.path.basename(f)[:-1]} --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
+                    f"vips tiffsave {f} {PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
                 )
                 != 0
             ):
@@ -159,13 +161,13 @@ def main(
             try:
                 boto3.client("s3").put_object(
                     Bucket=S3_BUCKET,
-                    Key=os.path.basename(f)[:-1],
+                    Key=f"{f.stem}.tif",
                     Body=open(
-                        f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{os.path.basename(f)[:-1]}",
+                        f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem}.tif",
                         "rb",
                     ),
                 )
-                print(f" ✅\t TIFF sent to S3: {os.path.basename(f)[:-1]}")
+                print(f" ✅\t TIFF sent to S3: {f.stem}.tif")
             except botocore.exceptions.ClientError as e:
                 # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html
                 if e.response["Error"]["Code"] == "InternalError":
@@ -180,21 +182,21 @@ def main(
             # set up canvas
             canvas = {
                 "@type": "sc:Canvas",
-                "@id": f"{CANVAS_BASE_URL}{os.path.basename(f)[:-5]}",  # TODO
-                "label": f"{os.path.basename(f).split('.')[0].split('_')[-1]}",  # sequence portion of filename
+                "@id": f"{CANVAS_BASE_URL}{f.stem}",  # TODO
+                "label": f"{f.stem.split('_')[-1]}",  # sequence portion of filename
                 "width": width,
                 "height": height,
                 "images": [
                     {
                         "@type": "oa:Annotation",
                         "motivation": "sc:painting",
-                        "on": f"{CANVAS_BASE_URL}{os.path.basename(f)[:-5]}",  # TODO same as canvas["@id"]
+                        "on": f"{CANVAS_BASE_URL}{f.stem}",  # TODO same as canvas["@id"]
                         "resource": {
                             "@type": "dctypes:Image",
-                            "@id": f"{IIIF_SERVER_BASE_URL}{os.path.basename(f)[:-5]}/full/max/0/default.jpg",  # TODO
+                            "@id": f"{IIIF_SERVER_BASE_URL}{f.stem}/full/max/0/default.jpg",  # TODO
                             "service": {
                                 "@context": "http://iiif.io/api/image/2/context.json",
-                                "@id": f"{IIIF_SERVER_BASE_URL}{os.path.basename(f)[:-5]}",  # TODO
+                                "@id": f"{IIIF_SERVER_BASE_URL}{f.stem}",  # TODO
                                 "profile": "http://iiif.io/api/image/2/level2.json",
                             },
                         },
