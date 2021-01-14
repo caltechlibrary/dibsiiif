@@ -58,18 +58,23 @@ def main(
 ):
     """Process digitized material for Caltech Library DIBS."""
 
-    (
-        PATH_TO_MARTIAN,
-        MANIFEST_BASE_URL,
-        S3_BUCKET,
-        CANVAS_BASE_URL,
-        IIIF_SERVER_BASE_URL,
-        PATH_TO_PROCESSED_SCANS,
-        PATH_TO_PROCESSED_IIIF,
-    ) = validate_config(path_to_scans)
+    try:
+        (
+            PATH_TO_READY_SCANS,
+            PATH_TO_MARTIAN,
+            MANIFEST_BASE_URL,
+            S3_BUCKET,
+            CANVAS_BASE_URL,
+            IIIF_SERVER_BASE_URL,
+            PATH_TO_PROCESSED_SCANS,
+            PATH_TO_PROCESSED_IIIF,
+        ) = validate_config(path_to_scans)
+    except FileNotFoundError as e:
+        print(" ❌\t A problem occurred when validating the configuration.")
+        raise e
 
     # look for subdirectories
-    directory_paths = [e.path for e in os.scandir(path_to_scans) if e.is_dir()]
+    directory_paths = [e.path for e in os.scandir(PATH_TO_READY_SCANS) if e.is_dir()]
 
     for i in directory_paths:
         # create a list of TIFFs
@@ -224,37 +229,45 @@ def main(
         Path(i).replace(f"{PATH_TO_PROCESSED_SCANS}/{os.path.basename(i)}")
 
 
+def directory_setup(directory):
+    if not Path(directory).exists():
+        Path(directory).mkdir()
+    elif Path(directory).is_file():
+        print(f" ❌\t A non-directory file exists at: {directory}")
+        raise FileExistsError
+    return Path(directory)
+
+
 def find_missing(sequence):
     sequence.sort()
     return [x for x in range(sequence[0], sequence[-1] + 1) if x not in sequence]
 
 
 def validate_config(path_to_scans):
-    # TODO validate path_to_scans
+    PATH_TO_READY_SCANS = Path(path_to_scans).resolve(strict=True)
     PATH_TO_MARTIAN = config(
         "PATH_TO_MARTIAN", default="/usr/local/bin/martian", cast=Path
-    ).rstrip(
-        "/"
-    )  # TODO validate path
+    ).resolve(strict=True)
     MANIFEST_BASE_URL = config("MANIFEST_BASE_URL").rstrip("/")
     S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
     CANVAS_BASE_URL = config("CANVAS_BASE_URL").rstrip("/")
     IIIF_SERVER_BASE_URL = config("IIIF_SERVER_BASE_URL").rstrip("/")
-    PATH_TO_PROCESSED_SCANS = config(
-        "PATH_TO_PROCESSED_SCANS",
-        default=f"{Path(path_to_scans).parent}/PROCESSED_SCANS",
-        cast=Path,
-    ).rstrip(
-        "/"
-    )  # TODO validate path
-    PATH_TO_PROCESSED_IIIF = config(
-        "PATH_TO_PROCESSED_IIIF",
-        default=f"{Path(path_to_scans).parent}/PROCESSED_IIIF",
-        cast=Path,
-    ).rstrip(
-        "/"
-    )  # TODO validate path
+    PATH_TO_PROCESSED_SCANS = directory_setup(
+        config(
+            "PATH_TO_PROCESSED_SCANS",
+            default=f"{PATH_TO_READY_SCANS.parent}/DIBS_PROCESSED_SCANS",
+            cast=Path,
+        )
+    ).resolve(strict=True)
+    PATH_TO_PROCESSED_IIIF = directory_setup(
+        config(
+            "PATH_TO_PROCESSED_IIIF",
+            default=f"{PATH_TO_READY_SCANS.parent}/DIBS_PROCESSED_IIIF",
+            cast=Path,
+        )
+    ).resolve(strict=True)
     return (
+        PATH_TO_READY_SCANS,
         PATH_TO_MARTIAN,
         MANIFEST_BASE_URL,
         S3_BUCKET,
