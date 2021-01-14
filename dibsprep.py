@@ -2,12 +2,20 @@
 # .env file containing the following variables and values:
 """
     PATH_TO_MARTIAN="" # location of martian application on filesystem
-    MANIFEST_BASE_URL="" # URL path before "/[identifier]/manifest.json"
+    MANIFEST_BASE_URL="" # URL path before "/{identifier}/manifest.json"
     S3_BUCKET="" # name of S3 bucket
     CANVAS_BASE_URL="" # URL path before item identifier and image identifier
-    IIIF_SERVER_BASE_URL="" # URL path including "/latest/iiif/2/" and before "/35047019492099_001"
+    IIIF_SERVER_BASE_URL="" # URL path including "/{stage}/iiif/2" and before "/35047019492099_001"
     PATH_TO_PROCESSED_SCANS="" # location on filesystem to move processed item folders into
     PATH_TO_PROCESSED_IIIF="" # location on filesystem to move final IIIF items into
+"""
+# EXAMPLES
+"""
+    MANIFEST: https://purl.stanford.edu/qm670kv1873/iiif/manifest
+    CANVAS: https://purl.stanford.edu/qm670kv1873/iiif/canvas/image_1
+    RESOURCE: https://stacks.stanford.edu/image/iiif/qm670kv1873%2FW168_000001_300/full/full/0/default.jpg
+    CANVAS: https://purl.stanford.edu/qm670kv1873/iiif/canvas/image_2
+    RESOURCE: https://stacks.stanford.edu/image/iiif/qm670kv1873%2FW168_000002_300/full/full/0/default.jpg
 """
 
 # TEST CASES
@@ -87,7 +95,7 @@ def main(
         manifest = {
             "@context": "http://iiif.io/api/presentation/2/context.json",
             "@type": "sc:Manifest",
-            "@id": f"{config('MANIFEST_BASE_URL')}{os.path.basename(i)}/manifest.json",  # TODO add domain
+            "@id": f"{MANIFEST_BASE_URL}/{os.path.basename(i)}/manifest.json",  # TODO add domain
             "attribution": "Caltech Library",
             "logo": "https://www.library.caltech.edu/sites/default/files/caltechlibrary-logo.png",  # TODO add logo
             "sequences": [{"@type": "sc:Sequence", "canvases": []}],
@@ -179,7 +187,7 @@ def main(
             # set up canvas
             canvas = {
                 "@type": "sc:Canvas",
-                "@id": f"{CANVAS_BASE_URL}{f.stem}",  # TODO
+                "@id": f"{CANVAS_BASE_URL}/{f.stem}",  # TODO
                 "label": f"{f.stem.split('_')[-1]}",  # sequence portion of filename
                 "width": width,
                 "height": height,
@@ -187,13 +195,13 @@ def main(
                     {
                         "@type": "oa:Annotation",
                         "motivation": "sc:painting",
-                        "on": f"{CANVAS_BASE_URL}{f.stem}",  # TODO same as canvas["@id"]
+                        "on": f"{CANVAS_BASE_URL}/{f.stem}",  # TODO same as canvas["@id"]
                         "resource": {
                             "@type": "dctypes:Image",
-                            "@id": f"{IIIF_SERVER_BASE_URL}{f.stem}/full/max/0/default.jpg",  # TODO
+                            "@id": f"{IIIF_SERVER_BASE_URL}/{f.stem}/full/max/0/default.jpg",  # TODO
                             "service": {
                                 "@context": "http://iiif.io/api/image/2/context.json",
-                                "@id": f"{IIIF_SERVER_BASE_URL}{f.stem}",  # TODO
+                                "@id": f"{IIIF_SERVER_BASE_URL}/{f.stem}",  # TODO
                                 "profile": "http://iiif.io/api/image/2/level2.json",
                             },
                         },
@@ -225,20 +233,26 @@ def validate_config(path_to_scans):
     # TODO validate path_to_scans
     PATH_TO_MARTIAN = config(
         "PATH_TO_MARTIAN", default="/usr/local/bin/martian", cast=Path
+    ).rstrip(
+        "/"
     )  # TODO validate path
-    MANIFEST_BASE_URL = config("MANIFEST_BASE_URL")
+    MANIFEST_BASE_URL = config("MANIFEST_BASE_URL").rstrip("/")
     S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
-    CANVAS_BASE_URL = config("CANVAS_BASE_URL")
-    IIIF_SERVER_BASE_URL = config("IIIF_SERVER_BASE_URL")
+    CANVAS_BASE_URL = config("CANVAS_BASE_URL").rstrip("/")
+    IIIF_SERVER_BASE_URL = config("IIIF_SERVER_BASE_URL").rstrip("/")
     PATH_TO_PROCESSED_SCANS = config(
         "PATH_TO_PROCESSED_SCANS",
         default=f"{Path(path_to_scans).parent}/PROCESSED_SCANS",
         cast=Path,
+    ).rstrip(
+        "/"
     )  # TODO validate path
     PATH_TO_PROCESSED_IIIF = config(
         "PATH_TO_PROCESSED_IIIF",
         default=f"{Path(path_to_scans).parent}/PROCESSED_IIIF",
         cast=Path,
+    ).rstrip(
+        "/"
     )  # TODO validate path
     return (
         PATH_TO_MARTIAN,
