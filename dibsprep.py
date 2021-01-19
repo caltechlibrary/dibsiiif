@@ -83,12 +83,14 @@ def main(
         for e in os.scandir(i):
             if e.is_file() and e.name.endswith((".tif", ".tiff")):
                 # report on sequence anomalies
-                if not e.name.split(".")[0].split("_")[-1].isnumeric():
+                if not e.name.split(".")[0].split("_", 1)[-1].isnumeric():
+                    # TODO parse and transform sequence strings as output by scanning software
                     sys.exit(
                         f" ⚠️\t Non-numeric sequence identifier encountered: {e.path}"
                     )
-                tiff_paths.append(e.path)
-                sequence.append(int(e.name.split(".")[0].split("_")[-1]))
+                else:
+                    tiff_paths.append(e.path)
+                    sequence.append(int(e.name.split(".")[0].split("_")[-1]))
 
         # report on sequence anomalies
         missing = find_missing(sequence)
