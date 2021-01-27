@@ -1,13 +1,14 @@
 # EXPECTATIONS
-# .env file containing the following variables and values:
+# settings.ini file containing the following variables and values:
 """
-    PATH_TO_MARTIAN="" # location of martian application on filesystem
-    MANIFEST_BASE_URL="" # URL path before "/{identifier}/manifest.json"
-    S3_BUCKET="" # name of S3 bucket
-    CANVAS_BASE_URL="" # URL path before item identifier and image identifier
-    IIIF_SERVER_BASE_URL="" # URL path including "/{stage}/iiif/2" and before "/35047019492099_001"
-    PATH_TO_PROCESSED_SCANS="" # location on filesystem to move processed item folders into
-    PATH_TO_PROCESSED_IIIF="" # location on filesystem to move final IIIF items into
+    [settings]
+    PATH_TO_MARTIAN = # location of martian application on filesystem
+    MANIFEST_BASE_URL = # URL path before "/{identifier}/manifest.json"
+    S3_BUCKET = # name of S3 bucket
+    CANVAS_BASE_URL = # URL path before item identifier and image identifier
+    IIIF_SERVER_BASE_URL = # URL path including "/{stage}/iiif/2" and before "/35047019492099_001"
+    PATH_TO_PROCESSED_SCANS = # location on filesystem to move processed item folders into
+    PATH_TO_PROCESSED_IIIF = # location on filesystem to move final IIIF items into
 """
 # EXAMPLES
 """
@@ -112,6 +113,7 @@ def main(
         # retrieve book metadata
         # NOTE assuming directory name is a barcode number
         # NOTE assuming martian is installed
+        # NOTE assuming barcode query returns a single record
         if (
             os.system(
                 f"{PATH_TO_MARTIAN} --no-gui --output '/tmp/output.xml' 'barcode:{os.path.basename(i)}'"
@@ -164,7 +166,6 @@ def main(
         for f in tiff_paths:
             f = Path(f)
             # create compressed pyramid TIFF
-            # vips tiffsave in.tiff out.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256
             if (
                 os.system(
                     f"vips tiffsave {f} {PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
@@ -173,8 +174,6 @@ def main(
             ):
                 sys.exit(" ❌\t An error occurred running vips.")
             # create canvas metadata
-            # vipsheader -f width file.tiff
-            # vipsheader -f height file.tiff
             width = os.popen(f"vipsheader -f width {f}").read().strip()
             height = os.popen(f"vipsheader -f height {f}").read().strip()
 
