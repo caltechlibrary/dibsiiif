@@ -144,7 +144,7 @@ def main(
                 if tag250a:
                     edition = tag250a[0].get_text()
                 tag008 = soup.select("[tag='008']")
-                year = tag008.get_text()[7:11]
+                year = tag008[0].get_text()[7:11]
         except FileNotFoundError as e:
             print(
                 f" ⚠️\t No output received from martian for item {os.path.basename(i)}."
