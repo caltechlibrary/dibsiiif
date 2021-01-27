@@ -42,6 +42,7 @@ import botocore
 import json
 import os
 import plac
+import shutil
 import sys
 from bs4 import BeautifulSoup
 from decouple import config
@@ -228,7 +229,7 @@ def main(
 
         os.makedirs(f"{PATH_TO_PROCESSED_SCANS}/{os.path.basename(i)}", exist_ok=True)
         # move original item directory to PROCESSED location
-        Path(i).replace(f"{PATH_TO_PROCESSED_SCANS}/{os.path.basename(i)}")
+        shutil.move(i, f"{PATH_TO_PROCESSED_SCANS}/{os.path.basename(i)}")
 
 
 def directory_setup(directory):
