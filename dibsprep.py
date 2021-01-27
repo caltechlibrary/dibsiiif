@@ -256,24 +256,28 @@ def find_missing(sequence):
 
 
 def validate_config(path_to_scans):
-    PATH_TO_READY_SCANS = Path(path_to_scans).resolve(strict=True)
-    PATH_TO_MARTIAN = config("PATH_TO_MARTIAN", cast=Path).resolve(strict=True)
+    PATH_TO_READY_SCANS = Path(os.path.expanduser(path_to_scans)).resolve(strict=True)
+    PATH_TO_MARTIAN = Path(os.path.expanduser(config("PATH_TO_MARTIAN"))).resolve(
+        strict=True
+    )
     MANIFEST_BASE_URL = config("MANIFEST_BASE_URL").rstrip("/")
     S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
     CANVAS_BASE_URL = config("CANVAS_BASE_URL").rstrip("/")
     IIIF_SERVER_BASE_URL = config("IIIF_SERVER_BASE_URL").rstrip("/")
     PATH_TO_PROCESSED_SCANS = directory_setup(
-        config(
-            "PATH_TO_PROCESSED_SCANS",
-            default=f"{PATH_TO_READY_SCANS.parent}/DIBS_PROCESSED",
-            cast=Path,
+        os.path.expanduser(
+            config(
+                "PATH_TO_PROCESSED_SCANS",
+                default=f"{PATH_TO_READY_SCANS.parent}/DIBS_PROCESSED",
+            )
         )
     ).resolve(strict=True)
     PATH_TO_PROCESSED_IIIF = directory_setup(
-        config(
-            "PATH_TO_PROCESSED_IIIF",
-            default=f"{PATH_TO_READY_SCANS.parent}/DIBS_IIIF",
-            cast=Path,
+        os.path.expanduser(
+            config(
+                "PATH_TO_PROCESSED_IIIF",
+                default=f"{PATH_TO_READY_SCANS.parent}/DIBS_IIIF",
+            )
         )
     ).resolve(strict=True)
     return (
