@@ -123,19 +123,26 @@ def main(
             with open("/tmp/output.xml") as f:
                 soup = BeautifulSoup(f, "xml")
                 tag245a = soup.select("[tag='245'] > [code='a']")
-                if tag245a[0].get_text().endswith(" /"):
-                    title = tag245a[0].get_text()[:-2]
+                if tag245a:
+                    title = tag245a[0].get_text().strip(" /:;,.")
                 else:
-                    title = tag245a[0].get_text()
+                    sys.exit(
+                        f" ❌\t title tag was empty for {os.path.basename(i)}; notify Laurel"
+                    )
+                subtitle = None
+                tag245b = soup.select("[tag='245'] > [code='b']")
+                if tag245b:
+                    subtitle = f": {tag245b[0].get_text().strip(' /:;,.')}"
+                author = None
                 tag245c = soup.select("[tag='245'] > [code='c']")
-                author = tag245c[0].get_text()
+                if tag245c:
+                    author = tag245c[0].get_text().strip(" /:;,.")
+                edition = None
                 tag250a = soup.select("[tag='250'] > [code='a']")
-                edition = tag250a[0].get_text()
-                tag260c = soup.select("[tag='260'] > [code='c']")
-                if tag260c[0].get_text().startswith("c"):
-                    year = tag260c[0].get_text()[1:]
-                else:
-                    year = tag260c[0].get_text()
+                if tag250a:
+                    edition = tag250a[0].get_text()
+                tag008 = soup.select("[tag='008']")
+                year = tag008.get_text()[7:11]
         except FileNotFoundError as e:
             print(
                 f" ⚠️\t No output received from martian for item {os.path.basename(i)}."
@@ -143,12 +150,13 @@ def main(
             continue
 
         manifest["label"] = title
-        manifest["metadata"] = [
-            {"label": "Title", "value": title},
-            {"label": "Author", "value": author},
-            {"label": "Edition", "value": edition},
-            {"label": "Year", "value": year},
-        ]
+        manifest["metadata"] = []
+        manifest["metadata"].append({"label": "Title", "value": f"{title}{subtitle}"})
+        if author:
+            manifest["metadata"].append({"label": "Author", "value": author})
+        if edition:
+            manifest["metadata"].append({"label": "Edition", "value": edition})
+        manifest["metadata"].append({"label": "Year", "value": year})
 
         os.makedirs(f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}", exist_ok=True)
         # loop through list of TIFFs
