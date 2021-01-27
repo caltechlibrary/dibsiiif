@@ -103,7 +103,7 @@ def main(
         manifest = {
             "@context": "http://iiif.io/api/presentation/2/context.json",
             "@type": "sc:Manifest",
-            "@id": f"{MANIFEST_BASE_URL}/{os.path.basename(i)}/manifest.json",  # TODO add domain
+            "@id": f"{MANIFEST_BASE_URL}/{os.path.basename(i)}",
             "attribution": "Caltech Library",
             "logo": "https://www.library.caltech.edu/sites/default/files/caltechlibrary-logo.png",  # TODO add logo
             "sequences": [{"@type": "sc:Sequence", "canvases": []}],
@@ -167,7 +167,7 @@ def main(
             # vips tiffsave in.tiff out.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256
             if (
                 os.system(
-                    f"vips tiffsave {f} {PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
+                    f"vips tiffsave {f} {PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
                 )
                 != 0
             ):
@@ -182,13 +182,15 @@ def main(
             try:
                 boto3.client("s3").put_object(
                     Bucket=S3_BUCKET,
-                    Key=f"{f.stem}.tif",
+                    Key=f"{os.path.basename(i)}/{f.stem.split('_')[-1]}.tif",
                     Body=open(
-                        f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem}.tif",
+                        f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem.split('_')[-1]}.tif",
                         "rb",
                     ),
                 )
-                print(f" ✅\t TIFF sent to S3: {f.stem}.tif")
+                print(
+                    f" ✅\t TIFF sent to S3: {os.path.basename(i)}/{f.stem.split('_')[-1]}.tif"
+                )
             except botocore.exceptions.ClientError as e:
                 # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html
                 if e.response["Error"]["Code"] == "InternalError":
@@ -203,7 +205,7 @@ def main(
             # set up canvas
             canvas = {
                 "@type": "sc:Canvas",
-                "@id": f"{CANVAS_BASE_URL}/{f.stem}",  # TODO
+                "@id": f"{CANVAS_BASE_URL}/{os.path.basename(i)}/{f.stem.split('_')[-1]}",  # TODO
                 "label": f"{f.stem.split('_')[-1]}",  # sequence portion of filename
                 "width": width,
                 "height": height,
@@ -211,13 +213,13 @@ def main(
                     {
                         "@type": "oa:Annotation",
                         "motivation": "sc:painting",
-                        "on": f"{CANVAS_BASE_URL}/{f.stem}",  # TODO same as canvas["@id"]
+                        "on": f"{CANVAS_BASE_URL}/{os.path.basename(i)}/{f.stem.split('_')[-1]}",  # same as canvas["@id"]
                         "resource": {
                             "@type": "dctypes:Image",
-                            "@id": f"{IIIF_SERVER_BASE_URL}/{f.stem}/full/max/0/default.jpg",  # TODO
+                            "@id": f"{IIIF_SERVER_BASE_URL}/{os.path.basename(i)}%2F{f.stem.split('_')[-1]}/full/max/0/default.jpg",
                             "service": {
                                 "@context": "http://iiif.io/api/image/2/context.json",
-                                "@id": f"{IIIF_SERVER_BASE_URL}/{f.stem}",  # TODO
+                                "@id": f"{IIIF_SERVER_BASE_URL}/{os.path.basename(i)}%2F{f.stem.split('_')[-1]}",
                                 "profile": "http://iiif.io/api/image/2/level2.json",
                             },
                         },
