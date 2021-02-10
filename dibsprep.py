@@ -227,9 +227,8 @@ def main(
 
         # TODO upload manifest.json to ?
 
-        os.makedirs(f"{PATH_TO_PROCESSED_SCANS}/{os.path.basename(i)}", exist_ok=True)
         # move original item directory to PROCESSED location
-        shutil.move(i, f"{PATH_TO_PROCESSED_SCANS}/{os.path.basename(i)}")
+        shutil.move(i, f"{PATH_TO_PROCESSED_SCANS}")
 
 
 def directory_setup(directory):
