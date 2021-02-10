@@ -124,15 +124,15 @@ def main(
                 sys.exit(
                     f" ❌\t title tag was empty for {os.path.basename(i)}; notify Laurel"
                 )
-            subtitle = None
+            subtitle = ""
             tag245b = soup.select("[tag='245'] > [code='b']")
             if tag245b:
                 subtitle = f": {tag245b[0].get_text().strip(' /:;,.')}"
-            author = None
+            author = ""
             tag245c = soup.select("[tag='245'] > [code='c']")
             if tag245c:
                 author = tag245c[0].get_text().strip(" /:;,.")
-            edition = None
+            edition = ""
             tag250a = soup.select("[tag='250'] > [code='a']")
             if tag250a:
                 edition = tag250a[0].get_text()
