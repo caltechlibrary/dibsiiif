@@ -2,7 +2,6 @@
 # settings.ini file containing the following variables and values:
 """
     [settings]
-    PATH_TO_MARTIAN = # location of martian application on filesystem
     MANIFEST_BASE_URL = # URL path before "/{identifier}/manifest.json"
     S3_BUCKET = # name of S3 bucket
     CANVAS_BASE_URL = # URL path before item identifier and image identifier
@@ -21,7 +20,6 @@
 
 # TEST CASES
 # - no results from barcode
-# - martian program not found
 # - vips program not found
 # - supplied path to scans not valid
 # - no access to S3 bucket
@@ -46,6 +44,7 @@ import plac
 import shutil
 import sys
 from bs4 import BeautifulSoup
+from commonpy.network_utils import net
 from decouple import config
 from pathlib import Path
 
@@ -63,7 +62,6 @@ def main(
     try:
         (
             PATH_TO_READY_SCANS,
-            PATH_TO_MARTIAN,
             MANIFEST_BASE_URL,
             S3_BUCKET,
             CANVAS_BASE_URL,
@@ -112,43 +110,36 @@ def main(
 
         # retrieve book metadata
         # NOTE assuming directory name is a barcode number
-        # NOTE assuming martian is installed
         # NOTE assuming barcode query returns a single record
-        if (
-            os.system(
-                f"{PATH_TO_MARTIAN} --no-gui --output '/tmp/output.xml' 'barcode:{os.path.basename(i)}'"
-            )
-            != 0
-        ):
-            sys.exit(" ❌\t An error occurred running martian.")
-        try:
-            with open("/tmp/output.xml") as f:
-                soup = BeautifulSoup(f, "xml")
-                tag245a = soup.select("[tag='245'] > [code='a']")
-                if tag245a:
-                    title = tag245a[0].get_text().strip(" /:;,.")
-                else:
-                    sys.exit(
-                        f" ❌\t title tag was empty for {os.path.basename(i)}; notify Laurel"
-                    )
-                subtitle = None
-                tag245b = soup.select("[tag='245'] > [code='b']")
-                if tag245b:
-                    subtitle = f": {tag245b[0].get_text().strip(' /:;,.')}"
-                author = None
-                tag245c = soup.select("[tag='245'] > [code='c']")
-                if tag245c:
-                    author = tag245c[0].get_text().strip(" /:;,.")
-                edition = None
-                tag250a = soup.select("[tag='250'] > [code='a']")
-                if tag250a:
-                    edition = tag250a[0].get_text()
-                tag008 = soup.select("[tag='008']")
-                year = tag008[0].get_text()[7:11]
-        except FileNotFoundError as e:
-            print(
-                f" ⚠️\t No output received from martian for item {os.path.basename(i)}."
-            )
+        (response, error) = net(
+            "get",
+            f"https://caltech.tind.io/search?p=barcode%3A{os.path.basename(i)}&of=xm",
+        )
+        if not error:
+            soup = BeautifulSoup(response.text, "xml")
+            tag245a = soup.select("[tag='245'] > [code='a']")
+            if tag245a:
+                title = tag245a[0].get_text().strip(" /:;,.")
+            else:
+                sys.exit(
+                    f" ❌\t title tag was empty for {os.path.basename(i)}; notify Laurel"
+                )
+            subtitle = None
+            tag245b = soup.select("[tag='245'] > [code='b']")
+            if tag245b:
+                subtitle = f": {tag245b[0].get_text().strip(' /:;,.')}"
+            author = None
+            tag245c = soup.select("[tag='245'] > [code='c']")
+            if tag245c:
+                author = tag245c[0].get_text().strip(" /:;,.")
+            edition = None
+            tag250a = soup.select("[tag='250'] > [code='a']")
+            if tag250a:
+                edition = tag250a[0].get_text()
+            tag008 = soup.select("[tag='008']")
+            year = tag008[0].get_text()[7:11]
+        else:
+            print(f" ❌\t An error occurred when querying TIND: {error.text}")
             continue
 
         manifest["label"] = title
@@ -257,9 +248,6 @@ def find_missing(sequence):
 
 def validate_config(path_to_scans):
     PATH_TO_READY_SCANS = Path(os.path.expanduser(path_to_scans)).resolve(strict=True)
-    PATH_TO_MARTIAN = Path(os.path.expanduser(config("PATH_TO_MARTIAN"))).resolve(
-        strict=True
-    )
     MANIFEST_BASE_URL = config("MANIFEST_BASE_URL").rstrip("/")
     S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
     CANVAS_BASE_URL = config("CANVAS_BASE_URL").rstrip("/")
@@ -282,7 +270,6 @@ def validate_config(path_to_scans):
     ).resolve(strict=True)
     return (
         PATH_TO_READY_SCANS,
-        PATH_TO_MARTIAN,
         MANIFEST_BASE_URL,
         S3_BUCKET,
         CANVAS_BASE_URL,
@@ -361,9 +348,7 @@ if __name__ == "__main__":
     }
 """
 
-# retrieve book metadata
-# ~/Applications/martian/bin/martian -G "https://caltech.tind.io/search?p=barcode%3A35047019492099"
-# ~/Desktop/output.xml
+# book metadata in MARCXML
 """
     <?xml version="1.0" encoding="UTF-8"?>
     <collection xmlns="http://www.loc.gov/MARC21/slim">
