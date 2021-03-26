@@ -82,15 +82,21 @@ def main(
         sequence = []
         for e in os.scandir(i):
             if e.is_file() and e.name.endswith((".tif", ".tiff")):
-                # report on sequence anomalies
-                if not e.name.split(".")[0].split("_", 1)[-1].isnumeric():
-                    # TODO parse and transform sequence strings as output by scanning software
-                    sys.exit(
-                        f" ⚠️\t Non-numeric sequence identifier encountered: {e.path}"
-                    )
-                else:
+                if (
+                    len(e.name.split(".")[0].split("_")) == 2
+                    and e.name.split(".")[0].split("_")[-1].isnumeric()
+                ):
                     tiff_paths.append(e.path)
                     sequence.append(int(e.name.split(".")[0].split("_")[-1]))
+                elif (
+                    len(e.name.split(".")[0].split("_")) == 3
+                    and e.name.split(".")[0].split("_")[-1].isnumeric()
+                    and e.name.split(".")[0].split("_")[-2] == "Page"
+                ):
+                    tiff_paths.append(e.path)
+                    sequence.append(int(e.name.split(".")[0].split("_")[-1]))
+                else:
+                    sys.exit(f" ⚠️\t Unexpected file name format encountered: {e.path}")
         # TODO fails on empty directories
 
         # report on sequence anomalies
