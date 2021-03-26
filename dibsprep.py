@@ -5,7 +5,7 @@
     MANIFEST_BASE_URL = # URL path before "/{identifier}/manifest.json"
     S3_BUCKET = # name of S3 bucket
     CANVAS_BASE_URL = # URL path before item identifier and image identifier
-    IIIF_SERVER_BASE_URL = # URL path including "/{stage}/iiif/2" and before "/35047019492099_001"
+    IIIF_BASE_URL = # URL path including "/{stage}/iiif/2" and before "/35047019492099_001"
     PATH_TO_PROCESSED_SCANS = # location on filesystem to move processed item folders into
     PATH_TO_PROCESSED_IIIF = # location on filesystem to move final IIIF items into
 """
@@ -65,7 +65,7 @@ def main(
             MANIFEST_BASE_URL,
             S3_BUCKET,
             CANVAS_BASE_URL,
-            IIIF_SERVER_BASE_URL,
+            IIIF_BASE_URL,
             PATH_TO_PROCESSED_SCANS,
             PATH_TO_PROCESSED_IIIF,
         ) = validate_config(path_to_scans)
@@ -91,6 +91,7 @@ def main(
                 else:
                     tiff_paths.append(e.path)
                     sequence.append(int(e.name.split(".")[0].split("_")[-1]))
+        # TODO fails on empty directories
 
         # report on sequence anomalies
         missing = find_missing(sequence)
@@ -206,10 +207,10 @@ def main(
                         "on": f"{CANVAS_BASE_URL}/{os.path.basename(i)}/{f.stem.split('_')[-1]}",  # same as canvas["@id"]
                         "resource": {
                             "@type": "dctypes:Image",
-                            "@id": f"{IIIF_SERVER_BASE_URL}/{os.path.basename(i)}%2F{f.stem.split('_')[-1]}/full/max/0/default.jpg",
+                            "@id": f"{IIIF_BASE_URL}/{os.path.basename(i)}%2F{f.stem.split('_')[-1]}/full/max/0/default.jpg",
                             "service": {
                                 "@context": "http://iiif.io/api/image/2/context.json",
-                                "@id": f"{IIIF_SERVER_BASE_URL}/{os.path.basename(i)}%2F{f.stem.split('_')[-1]}",
+                                "@id": f"{IIIF_BASE_URL}/{os.path.basename(i)}%2F{f.stem.split('_')[-1]}",
                                 "profile": "http://iiif.io/api/image/2/level2.json",
                             },
                         },
@@ -250,7 +251,7 @@ def validate_config(path_to_scans):
     MANIFEST_BASE_URL = config("MANIFEST_BASE_URL").rstrip("/")
     S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
     CANVAS_BASE_URL = config("CANVAS_BASE_URL").rstrip("/")
-    IIIF_SERVER_BASE_URL = config("IIIF_SERVER_BASE_URL").rstrip("/")
+    IIIF_BASE_URL = config("IIIF_BASE_URL").rstrip("/")
     PATH_TO_PROCESSED_SCANS = directory_setup(
         os.path.expanduser(
             config(
@@ -272,7 +273,7 @@ def validate_config(path_to_scans):
         MANIFEST_BASE_URL,
         S3_BUCKET,
         CANVAS_BASE_URL,
-        IIIF_SERVER_BASE_URL,
+        IIIF_BASE_URL,
         PATH_TO_PROCESSED_SCANS,
         PATH_TO_PROCESSED_IIIF,
     )
