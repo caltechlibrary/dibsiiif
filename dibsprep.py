@@ -105,7 +105,7 @@ def main(
             "@type": "sc:Manifest",
             "@id": f"{MANIFEST_BASE_URL}/{os.path.basename(i)}",
             "attribution": "Caltech Library",
-            "logo": "https://www.library.caltech.edu/sites/default/files/caltechlibrary-logo.png",  # TODO add logo
+            "logo": f"{IIIF_BASE_URL}/logo/full/max/0/default.png",
             "sequences": [{"@type": "sc:Sequence", "canvases": []}],
         }
 
