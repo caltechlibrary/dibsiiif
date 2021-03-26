@@ -69,9 +69,9 @@ def main(
             PATH_TO_PROCESSED_SCANS,
             PATH_TO_PROCESSED_IIIF,
         ) = validate_config(path_to_scans)
-    except FileNotFoundError as e:
+    except FileNotFoundError as x:
         print(" ❌\t A problem occurred when validating the configuration.")
-        raise e
+        raise x
 
     # look for subdirectories
     directory_paths = [e.path for e in os.scandir(PATH_TO_READY_SCANS) if e.is_dir()]
@@ -202,7 +202,7 @@ def main(
             # set up canvas
             canvas = {
                 "@type": "sc:Canvas",
-                "@id": f"{CANVAS_BASE_URL}/{os.path.basename(i)}/{f.stem.split('_')[-1]}",  # TODO
+                "@id": f"{CANVAS_BASE_URL}/{os.path.basename(i)}/{f.stem.split('_')[-1]}",
                 "label": f"{f.stem.split('_')[-1]}",  # sequence portion of filename
                 "width": width,
                 "height": height,
@@ -228,7 +228,8 @@ def main(
 
         # save manifest.json
         with open(
-            f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{os.path.basename(i)}-manifest.json", "w"
+            f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{os.path.basename(i)}-manifest.json",
+            "w",
         ) as f:
             f.write(json.dumps(manifest, indent=4))
 
