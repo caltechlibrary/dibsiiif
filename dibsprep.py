@@ -222,7 +222,7 @@ def main(
 
         # save manifest.json
         with open(
-            f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/manifest.json", "w"
+            f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{os.path.basename(i)}-manifest.json", "w"
         ) as f:
             f.write(json.dumps(manifest, indent=4))
 
