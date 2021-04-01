@@ -1,14 +1,6 @@
 # EXPECTATIONS
-# settings.ini file containing the following variables and values:
-"""
-    [settings]
-    MANIFEST_BASE_URL = # URL path before "/{identifier}/manifest.json"
-    S3_BUCKET = # name of S3 bucket
-    CANVAS_BASE_URL = # URL path before item identifier and image identifier
-    IIIF_BASE_URL = # URL path including "/{stage}/iiif/2" and before "/35047019492099_001"
-    PATH_TO_PROCESSED_SCANS = # location on filesystem to move processed item folders into
-    PATH_TO_PROCESSED_IIIF = # location on filesystem to move final IIIF items into
-"""
+# settings.ini file with appropriate values (see example-settings.ini)
+
 # EXAMPLES
 """
     MANIFEST: https://purl.stanford.edu/qm670kv1873/iiif/manifest
@@ -54,16 +46,16 @@ def main(barcode: "the barcode of an item to be processed"):
 
     try:
         (
-            PATH_TO_READY_SCANS,
+            UNPROCESSED_SCANS_DIR,
+            PROCESSED_SCANS_DIR,
+            PROCESSED_IIIF_DIR,
             MANIFEST_BASE_URL,
-            S3_BUCKET,
             CANVAS_BASE_URL,
             IIIF_BASE_URL,
-            PATH_TO_PROCESSED_SCANS,
-            PATH_TO_PROCESSED_IIIF,
-        ) = validate_config(path_to_scans)
+            S3_BUCKET,
+        ) = validate_settings()
     except FileNotFoundError as x:
-        print(" ❌\t A problem occurred when validating the configuration.")
+        print(" ❌\t A problem occurred when validating the settings.")
         raise x
 
     # look for subdirectories
@@ -248,36 +240,28 @@ def find_missing(sequence):
     return [x for x in range(sequence[0], sequence[-1] + 1) if x not in sequence]
 
 
-def validate_config(path_to_scans):
-    PATH_TO_READY_SCANS = Path(os.path.expanduser(path_to_scans)).resolve(strict=True)
+def validate_settings():
+    UNPROCESSED_SCANS_DIR = directory_setup(
+        os.path.expanduser(config("UNPROCESSED_SCANS_DIR"))
+    ).resolve(strict=True)
+    PROCESSED_SCANS_DIR = directory_setup(
+        os.path.expanduser(config("PROCESSED_SCANS_DIR"))
+    ).resolve(strict=True)
+    PROCESSED_IIIF_DIR = directory_setup(
+        os.path.expanduser(config("PROCESSED_IIIF_DIR"))
+    ).resolve(strict=True)
     MANIFEST_BASE_URL = config("MANIFEST_BASE_URL").rstrip("/")
-    S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
     CANVAS_BASE_URL = config("CANVAS_BASE_URL").rstrip("/")
     IIIF_BASE_URL = config("IIIF_BASE_URL").rstrip("/")
-    PATH_TO_PROCESSED_SCANS = directory_setup(
-        os.path.expanduser(
-            config(
-                "PATH_TO_PROCESSED_SCANS",
-                default=f"{PATH_TO_READY_SCANS.parent}/DIBS_PROCESSED",
-            )
-        )
-    ).resolve(strict=True)
-    PATH_TO_PROCESSED_IIIF = directory_setup(
-        os.path.expanduser(
-            config(
-                "PATH_TO_PROCESSED_IIIF",
-                default=f"{PATH_TO_READY_SCANS.parent}/DIBS_IIIF",
-            )
-        )
-    ).resolve(strict=True)
+    S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
     return (
-        PATH_TO_READY_SCANS,
+        UNPROCESSED_SCANS_DIR,
+        PROCESSED_SCANS_DIR,
+        PROCESSED_IIIF_DIR,
         MANIFEST_BASE_URL,
-        S3_BUCKET,
         CANVAS_BASE_URL,
         IIIF_BASE_URL,
-        PATH_TO_PROCESSED_SCANS,
-        PATH_TO_PROCESSED_IIIF,
+        S3_BUCKET,
     )
 
 
