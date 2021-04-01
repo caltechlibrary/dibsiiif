@@ -17,17 +17,6 @@
 # - no access to S3 bucket
 # - both .tif and .tiff extensions
 
-# given: a source directory
-# look for subdirectories
-# create a list of TIFFs
-# report on sequence anomalies
-# loop through list of TIFFs
-# create compressed pyramid TIFF
-# retrieve book metadata
-# create manifest.json file
-# upload TIFF to S3
-# upload manifest.json to ?
-
 import boto3
 import botocore
 import json
