@@ -24,6 +24,7 @@ import os
 import plac
 import shutil
 import sys
+import traceback
 from bs4 import BeautifulSoup
 from commonpy.network_utils import net
 from decouple import config
@@ -35,6 +36,7 @@ def main(barcode: "the barcode of an item to be processed"):
 
     try:
         (
+            STATUS_FILES_DIR,
             UNPROCESSED_SCANS_DIR,
             PROCESSED_SCANS_DIR,
             PROCESSED_IIIF_DIR,
@@ -43,9 +45,27 @@ def main(barcode: "the barcode of an item to be processed"):
             IIIF_BASE_URL,
             S3_BUCKET,
         ) = validate_settings()
-    except FileNotFoundError as x:
+    except Exception as e:
+        # NOTE we cannot guarantee that `STATUS_FILES_DIR` exists
+        # TODO send a message to devs including `str(e)`
         print(" ❌\t A problem occurred when validating the settings.")
-        raise x
+        raise
+
+    # remove `STATUS_FILES_DIR/{barcode}-initiated` file
+    try:
+        Path(STATUS_FILES_DIR).joinpath(f"{barcode}-initiated").unlink()
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        raise
+
+    # create `STATUS_FILES_DIR/{barcode}-processing` file
+    try:
+        Path(STATUS_FILES_DIR).joinpath(f"{barcode}-processing").touch(exist_ok=False)
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        raise
 
     # look for subdirectories
     directory_paths = [e.path for e in os.scandir(PATH_TO_READY_SCANS) if e.is_dir()]
@@ -230,6 +250,9 @@ def find_missing(sequence):
 
 
 def validate_settings():
+    STATUS_FILES_DIR = Path(os.path.expanduser(config("STATUS_FILES_DIR"))).resolve(
+        strict=True
+    )  # NOTE do not create missing `STATUS_FILES_DIR`
     UNPROCESSED_SCANS_DIR = directory_setup(
         os.path.expanduser(config("UNPROCESSED_SCANS_DIR"))
     ).resolve(strict=True)
@@ -244,6 +267,7 @@ def validate_settings():
     IIIF_BASE_URL = config("IIIF_BASE_URL").rstrip("/")
     S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
     return (
+        STATUS_FILES_DIR,
         UNPROCESSED_SCANS_DIR,
         PROCESSED_SCANS_DIR,
         PROCESSED_IIIF_DIR,
