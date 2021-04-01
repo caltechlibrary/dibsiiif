@@ -170,7 +170,9 @@ def main(
                 )
                 != 0
             ):
-                sys.exit(" ❌\t An error occurred running vips.")
+                print(" ❌\t An error occurred running the following vips command:")
+                print(f" \t vips tiffsave {f} {PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256")
+                sys.exit()
             # create canvas metadata
             width = os.popen(f"vipsheader -f width {f}").read().strip()
             height = os.popen(f"vipsheader -f height {f}").read().strip()
