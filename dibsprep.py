@@ -49,15 +49,8 @@ from decouple import config
 from pathlib import Path
 
 
-def main(
-    path_to_scans: (
-        "parent directory containing folders of scanned items",
-        "positional",
-        None,
-        Path,
-    )
-):
-    """Process digitized material for Caltech Library DIBS."""
+def main(barcode: "the barcode of an item to be processed"):
+    """Process an item for Caltech Library DIBS."""
 
     try:
         (
