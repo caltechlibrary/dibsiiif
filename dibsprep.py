@@ -151,7 +151,7 @@ def main(barcode: "the barcode of an item to be processed"):
             if tag245a:
                 title = tag245a[0].get_text().strip(" /:;,.")
             else:
-                # TODO raise an exception
+                # TODO raise an exception properly
                 raise ValueError(f"❌ title tag was empty for {barcode}; notify Laurel")
             subtitle = ""
             tag245b = soup.select("[tag='245'] > [code='b']")
@@ -172,6 +172,7 @@ def main(barcode: "the barcode of an item to be processed"):
             traceback.print_exc(file=f)
         raise
 
+    # add metadata to manifest
     manifest["label"] = title
     manifest["metadata"] = []
     manifest["metadata"].append({"label": "Title", "value": f"{title}{subtitle}"})
@@ -181,6 +182,7 @@ def main(barcode: "the barcode of an item to be processed"):
         manifest["metadata"].append({"label": "Edition", "value": edition})
     manifest["metadata"].append({"label": "Year", "value": year})
 
+    # make IIIF directory if needed
     try:
         os.makedirs(f"{PROCESSED_IIIF_DIR}/{barcode}", exist_ok=True)
     except Exception as e:
