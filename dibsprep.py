@@ -267,8 +267,13 @@ def main(barcode: "the barcode of an item to be processed"):
     ) as f:
         f.write(json.dumps(manifest, indent=4))
 
-    # move original item directory to PROCESSED location
-    shutil.move(i, f"{PROCESSED_SCANS_DIR}")
+    # move `barcode_dir` into `PROCESSED_SCANS_DIR`
+    try:
+        shutil.move(barcode_dir, PROCESSED_SCANS_DIR)
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        raise
 
     # remove `STATUS_FILES_DIR/{barcode}-processing` file
     try:
