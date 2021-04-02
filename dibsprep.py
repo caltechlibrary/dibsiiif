@@ -53,8 +53,10 @@ def main(barcode: "the barcode of an item to be processed"):
         raise
 
     # remove `STATUS_FILES_DIR/{barcode}-initiated` file
+    # NOTE in order to allow the script to be run indpendently of a
+    # wrapper, we should not insist upon the initiated file existing
     try:
-        Path(STATUS_FILES_DIR).joinpath(f"{barcode}-initiated").unlink()
+        Path(STATUS_FILES_DIR).joinpath(f"{barcode}-initiated").unlink(missing_ok=True)
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
@@ -267,6 +269,14 @@ def main(barcode: "the barcode of an item to be processed"):
 
     # move original item directory to PROCESSED location
     shutil.move(i, f"{PROCESSED_SCANS_DIR}")
+
+    # remove `STATUS_FILES_DIR/{barcode}-processing` file
+    try:
+        Path(STATUS_FILES_DIR).joinpath(f"{barcode}-processing").unlink()
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        raise
 
 
 def directory_setup(directory):
