@@ -17,18 +17,19 @@
 # - no access to S3 bucket
 # - both .tif and .tiff extensions
 
-import boto3
-import botocore
 import json
 import os
-import plac
 import shutil
 import sys
 import traceback
+from pathlib import Path
+
+import boto3
+import botocore
+import plac
 from bs4 import BeautifulSoup
 from commonpy.network_utils import net
 from decouple import config
-from pathlib import Path
 
 
 def main(barcode: "the barcode of an item to be processed"):
