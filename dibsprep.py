@@ -68,77 +68,109 @@ def main(barcode: "the barcode of an item to be processed"):
             traceback.print_exc(file=f)
         raise
 
-    # create a list of TIFFs
+    # validate the `UNPROCESSED_SCANS_DIR/{barcode}` directory
+    try:
+        barcode_dir = Path(UNPROCESSED_SCANS_DIR).joinpath(barcode).resolve(strict=True)
+        if not len(os.listdir(barcode_dir)):
+            raise ValueError(f"item directory is empty: {barcode_dir}")
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        raise
+
+    # set up lists of TIFF paths and sequence numbers
     tiff_paths = []
     sequence = []
-    for e in os.scandir(i):
-        if e.is_file() and e.name.endswith((".tif", ".tiff")):
+    for i in os.scandir(barcode_dir):
+        if i.is_file() and i.name.endswith((".tif", ".tiff")):
+            # for the case of `35047000000000_001.tif`
             if (
-                len(e.name.split(".")[0].split("_")) == 2
-                and e.name.split(".")[0].split("_")[-1].isnumeric()
+                len(i.name.split(".")[0].split("_")) == 2
+                and i.name.split(".")[0].split("_")[0] == barcode
+                and i.name.split(".")[0].split("_")[-1].isnumeric()
             ):
-                tiff_paths.append(e.path)
-                sequence.append(int(e.name.split(".")[0].split("_")[-1]))
+                tiff_paths.append(i.path)
+                sequence.append(int(i.name.split(".")[0].split("_")[-1]))
+            # for the case of `35047000000000_Page_001.tif`
             elif (
-                len(e.name.split(".")[0].split("_")) == 3
-                and e.name.split(".")[0].split("_")[-1].isnumeric()
-                and e.name.split(".")[0].split("_")[-2] == "Page"
+                len(i.name.split(".")[0].split("_")) == 3
+                and i.name.split(".")[0].split("_")[0] == barcode
+                and i.name.split(".")[0].split("_")[-1].isnumeric()
+                and i.name.split(".")[0].split("_")[-2] == "Page"
             ):
-                tiff_paths.append(e.path)
-                sequence.append(int(e.name.split(".")[0].split("_")[-1]))
+                tiff_paths.append(i.path)
+                sequence.append(int(i.name.split(".")[0].split("_")[-1]))
             else:
-                sys.exit(f" ⚠️\t Unexpected file name format encountered: {e.path}")
-    # TODO fails on empty directories
+                print(
+                    f" ⚠️\t unexpected file name format encountered: {barcode}/{i.name}"
+                )
 
-    # report on sequence anomalies
-    missing = find_missing(sequence)
-    if missing:
-        print(missing)
-        sys.exit(f" ⚠️\t Missing sequence number(s) in {i}")
+    # verify that TIFFs exist in the `{barcode_dir}`
+    try:
+        if not len(tiff_paths):
+            raise ValueError(f"item directory contains no TIFFs: {barcode_dir}")
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        raise
+
+    # raise exception if the sequence is missing any numbers
+    try:
+        if missing_numbers(sequence):
+            raise ValueError(
+                f"missing sequence numbers for {barcode}: {missing_numbers(sequence)}"
+            )
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        raise
 
     # set up manifest
     manifest = {
         "@context": "http://iiif.io/api/presentation/2/context.json",
         "@type": "sc:Manifest",
-        "@id": f"{MANIFEST_BASE_URL}/{os.path.basename(i)}",
+        "@id": f"{MANIFEST_BASE_URL}/{barcode}",
         "attribution": "Caltech Library",
         "logo": f"{IIIF_BASE_URL}/logo/full/max/0/default.png",
         "sequences": [{"@type": "sc:Sequence", "canvases": []}],
     }
 
-    # retrieve book metadata
-    # NOTE assuming directory name is a barcode number
-    # NOTE assuming barcode query returns a single record
-    (response, error) = net(
-        "get",
-        f"https://caltech.tind.io/search?p=barcode%3A{os.path.basename(i)}&of=xm",
-    )
-    if not error:
-        soup = BeautifulSoup(response.text, "xml")
-        tag245a = soup.select("[tag='245'] > [code='a']")
-        if tag245a:
-            title = tag245a[0].get_text().strip(" /:;,.")
+    # retrieve item metadata
+    # NOTE barcode validation happens in the DIBS interface
+    try:
+        (net_response, net_exception) = net(
+            "get",
+            f"https://caltech.tind.io/search?p=barcode%3A{barcode}&of=xm",
+        )
+        if net_exception:
+            # TODO confirm proper way to raise this
+            raise net_exception
         else:
-            sys.exit(
-                f" ❌\t title tag was empty for {os.path.basename(i)}; notify Laurel"
-            )
-        subtitle = ""
-        tag245b = soup.select("[tag='245'] > [code='b']")
-        if tag245b:
-            subtitle = f": {tag245b[0].get_text().strip(' /:;,.')}"
-        author = ""
-        tag245c = soup.select("[tag='245'] > [code='c']")
-        if tag245c:
-            author = tag245c[0].get_text().strip(" /:;,.")
-        edition = ""
-        tag250a = soup.select("[tag='250'] > [code='a']")
-        if tag250a:
-            edition = tag250a[0].get_text()
-        tag008 = soup.select("[tag='008']")
-        year = tag008[0].get_text()[7:11]
-    else:
-        print(f" ❌\t An error occurred when querying TIND: {error.text}")
-        continue
+            soup = BeautifulSoup(net_response.text, "xml")
+            tag245a = soup.select("[tag='245'] > [code='a']")
+            if tag245a:
+                title = tag245a[0].get_text().strip(" /:;,.")
+            else:
+                # TODO raise an exception
+                raise ValueError(f"❌ title tag was empty for {barcode}; notify Laurel")
+            subtitle = ""
+            tag245b = soup.select("[tag='245'] > [code='b']")
+            if tag245b:
+                subtitle = f": {tag245b[0].get_text().strip(' /:;,.')}"
+            author = ""
+            tag245c = soup.select("[tag='245'] > [code='c']")
+            if tag245c:
+                author = tag245c[0].get_text().strip(" /:;,.")
+            edition = ""
+            tag250a = soup.select("[tag='250'] > [code='a']")
+            if tag250a:
+                edition = tag250a[0].get_text()
+            tag008 = soup.select("[tag='008']")
+            year = tag008[0].get_text()[7:11]
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        raise
 
     manifest["label"] = title
     manifest["metadata"] = []
@@ -149,20 +181,29 @@ def main(barcode: "the barcode of an item to be processed"):
         manifest["metadata"].append({"label": "Edition", "value": edition})
     manifest["metadata"].append({"label": "Year", "value": year})
 
-    os.makedirs(f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}", exist_ok=True)
-    # loop through list of TIFFs
+    try:
+        os.makedirs(f"{PROCESSED_IIIF_DIR}/{barcode}", exist_ok=True)
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        raise
+
+    # loop through sorted list of TIFF paths
     tiff_paths.sort()
     for f in tiff_paths:
         f = Path(f)
         # create compressed pyramid TIFF
         if (
+            # TODO use subprocess.run()
             os.system(
-                f"vips tiffsave {f} {PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
+                f"vips tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
             )
             != 0
         ):
             print(" ❌\t An error occurred running the following vips command:")
-            print(f" \t vips tiffsave {f} {PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256")
+            print(
+                f" \t vips tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
+            )
             sys.exit()
         # create canvas metadata
         width = os.popen(f"vipsheader -f width {f}").read().strip()
@@ -172,30 +213,26 @@ def main(barcode: "the barcode of an item to be processed"):
         try:
             boto3.client("s3").put_object(
                 Bucket=S3_BUCKET,
-                Key=f"{os.path.basename(i)}/{f.stem.split('_')[-1]}.tif",
+                Key=f"{barcode}/{f.stem.split('_')[-1]}.tif",
                 Body=open(
-                    f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{f.stem.split('_')[-1]}.tif",
+                    f"{PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif",
                     "rb",
                 ),
             )
-            print(
-                f" ✅\t TIFF sent to S3: {os.path.basename(i)}/{f.stem.split('_')[-1]}.tif"
-            )
+            print(f" ✅\t TIFF sent to S3: {barcode}/{f.stem.split('_')[-1]}.tif")
         except botocore.exceptions.ClientError as e:
             # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html
             if e.response["Error"]["Code"] == "InternalError":
                 print(f"Error Message: {e.response['Error']['Message']}")
                 print(f"Request ID: {e.response['ResponseMetadata']['RequestId']}")
-                print(
-                    f"HTTP Code: {e.response['ResponseMetadata']['HTTPStatusCode']}"
-                )
+                print(f"HTTP Code: {e.response['ResponseMetadata']['HTTPStatusCode']}")
             else:
                 raise e
 
         # set up canvas
         canvas = {
             "@type": "sc:Canvas",
-            "@id": f"{CANVAS_BASE_URL}/{os.path.basename(i)}/{f.stem.split('_')[-1]}",
+            "@id": f"{CANVAS_BASE_URL}/{barcode}/{f.stem.split('_')[-1]}",
             "label": f"{f.stem.split('_')[-1]}",  # sequence portion of filename
             "width": width,
             "height": height,
@@ -203,13 +240,13 @@ def main(barcode: "the barcode of an item to be processed"):
                 {
                     "@type": "oa:Annotation",
                     "motivation": "sc:painting",
-                    "on": f"{CANVAS_BASE_URL}/{os.path.basename(i)}/{f.stem.split('_')[-1]}",  # same as canvas["@id"]
+                    "on": f"{CANVAS_BASE_URL}/{barcode}/{f.stem.split('_')[-1]}",  # same as canvas["@id"]
                     "resource": {
                         "@type": "dctypes:Image",
-                        "@id": f"{IIIF_BASE_URL}/{os.path.basename(i)}%2F{f.stem.split('_')[-1]}/full/max/0/default.jpg",
+                        "@id": f"{IIIF_BASE_URL}/{barcode}%2F{f.stem.split('_')[-1]}/full/max/0/default.jpg",
                         "service": {
                             "@context": "http://iiif.io/api/image/2/context.json",
-                            "@id": f"{IIIF_BASE_URL}/{os.path.basename(i)}%2F{f.stem.split('_')[-1]}",
+                            "@id": f"{IIIF_BASE_URL}/{barcode}%2F{f.stem.split('_')[-1]}",
                             "profile": "http://iiif.io/api/image/2/level2.json",
                         },
                     },
@@ -219,17 +256,15 @@ def main(barcode: "the barcode of an item to be processed"):
         # add canvas to sequences
         manifest["sequences"][0]["canvases"].append(canvas)
 
-    # save manifest.json
+    # save `{barcode}-manifest.json`
     with open(
-        f"{PATH_TO_PROCESSED_IIIF}/{os.path.basename(i)}/{os.path.basename(i)}-manifest.json",
+        f"{PROCESSED_IIIF_DIR}/{barcode}/{barcode}-manifest.json",
         "w",
     ) as f:
         f.write(json.dumps(manifest, indent=4))
 
-    # TODO upload manifest.json to ?
-
     # move original item directory to PROCESSED location
-    shutil.move(i, f"{PATH_TO_PROCESSED_SCANS}")
+    shutil.move(i, f"{PROCESSED_SCANS_DIR}")
 
 
 def directory_setup(directory):
@@ -241,7 +276,8 @@ def directory_setup(directory):
     return Path(directory)
 
 
-def find_missing(sequence):
+def missing_numbers(sequence):
+    """return a list of missing sequence numbers"""
     sequence.sort()
     return [x for x in range(sequence[0], sequence[-1] + 1) if x not in sequence]
 
