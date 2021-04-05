@@ -268,8 +268,9 @@ def main(barcode: "the barcode of an item to be processed"):
         f.write(json.dumps(manifest, indent=4))
 
     # move `barcode_dir` into `PROCESSED_SCANS_DIR`
+    # NOTE shutil.move() in Python < 3.9 needs strings as arguments
     try:
-        shutil.move(barcode_dir, PROCESSED_SCANS_DIR)
+        shutil.move(str(barcode_dir), str(PROCESSED_SCANS_DIR))
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
