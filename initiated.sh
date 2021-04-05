@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# USAGE:
+# /bin/bash /path/to/this/script.sh /path/to/status/files/directory
+
+# set the nullglob in case there are no `*-initiated` files
+shopt -s nullglob
+
 # expecting an absolute path as an argument
 for FILE in "$1"/*-initiated; do
     barcode=$(basename "$FILE" | cut -d '-' -f 1)
