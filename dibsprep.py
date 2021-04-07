@@ -20,6 +20,7 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
 import traceback
 from pathlib import Path
@@ -47,9 +48,12 @@ def main(barcode: "the barcode of an item to be processed"):
             S3_BUCKET,
         ) = validate_settings()
     except Exception as e:
-        # NOTE we cannot guarantee that `STATUS_FILES_DIR` exists
-        # TODO send a message to devs including `str(e)`
-        print(" ❌\t A problem occurred when validating the settings.")
+        # NOTE we cannot guarantee that `STATUS_FILES_DIR` is set
+        # - it must exist if script is started from `initiated.sh`
+        # TODO figure out how to not send a message every minute
+        message = "❌ there was a problem with the settings for the `dibsprep.py` script"
+        print(message)
+        subprocess.run(["/bin/bash", "./notify.sh", str(e), message])
         raise
 
     # remove `STATUS_FILES_DIR/{barcode}-initiated` file
@@ -145,7 +149,6 @@ def main(barcode: "the barcode of an item to be processed"):
             f"https://caltech.tind.io/search?p=barcode%3A{barcode}&of=xm",
         )
         if net_exception:
-            # TODO confirm proper way to raise this
             raise net_exception
         else:
             soup = BeautifulSoup(net_response.text, "xml")
@@ -153,7 +156,6 @@ def main(barcode: "the barcode of an item to be processed"):
             if tag245a:
                 title = tag245a[0].get_text().strip(" /:;,.")
             else:
-                # TODO raise an exception properly
                 raise ValueError(f"❌ title tag was empty for {barcode}; notify Laurel")
             subtitle = ""
             tag245b = soup.select("[tag='245'] > [code='b']")
