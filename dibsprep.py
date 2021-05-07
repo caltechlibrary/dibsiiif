@@ -1,21 +1,7 @@
 # EXPECTATIONS
 # settings.ini file with appropriate values (see example-settings.ini)
 
-# EXAMPLES
-"""
-    MANIFEST: https://purl.stanford.edu/qm670kv1873/iiif/manifest
-    CANVAS: https://purl.stanford.edu/qm670kv1873/iiif/canvas/image_1
-    RESOURCE: https://stacks.stanford.edu/image/iiif/qm670kv1873%2FW168_000001_300/full/full/0/default.jpg
-    CANVAS: https://purl.stanford.edu/qm670kv1873/iiif/canvas/image_2
-    RESOURCE: https://stacks.stanford.edu/image/iiif/qm670kv1873%2FW168_000002_300/full/full/0/default.jpg
-"""
-
-# TEST CASES
-# - no results from barcode
-# - vips program not found
-# - supplied path to scans not valid
-# - no access to S3 bucket
-# - both .tif and .tiff extensions
+# NOTE: this script should be initiated by the `initiated.sh` script that runs on cron
 
 import json
 import os

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# NOTE: this file is intended to be run via cron every minute
+
 # USAGE:
 # /bin/bash /path/to/this/script.sh /path/to/status/files/directory
 
