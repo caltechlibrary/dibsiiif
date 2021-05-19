@@ -1,7 +1,7 @@
 # EXPECTATIONS
 # settings.ini file with appropriate values (see example-settings.ini)
 
-# NOTE: this script should be initiated by the `initiated.sh` script that runs on cron
+# NOTE: this script should be initiated by the `iiifify.sh` script that runs on cron
 
 import json
 import os
@@ -37,7 +37,7 @@ def main(barcode: "the barcode of an item to be processed"):
         # NOTE we cannot guarantee that `STATUS_FILES_DIR` is set
         # - it must exist if script is started from `initiated.sh`
         # TODO figure out how to not send a message every minute
-        message = "❌ there was a problem with the settings for the `dibsprep.py` script"
+        message = "❌ there was a problem with the settings for the `dibsiiif.py` script"
         print(message)
         subprocess.run(["/bin/bash", "./notify.sh", str(e), message])
         raise
