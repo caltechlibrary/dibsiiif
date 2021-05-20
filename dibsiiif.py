@@ -191,18 +191,16 @@ def main(barcode: "the barcode of an item to be processed"):
         if (
             # TODO use subprocess.run()
             os.system(
-                f"vips tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
+                f"{VIPS_CMD} tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
             )
             != 0
         ):
-            print(" ❌\t An error occurred running the following vips command:")
-            print(
-                f" \t vips tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
-            )
-            sys.exit()
+            print("❌ an error occurred running the vips command")
+            raise RuntimeError(f"{VIPS_CMD} tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256")
         # create canvas metadata
-        width = os.popen(f"vipsheader -f width {f}").read().strip()
-        height = os.popen(f"vipsheader -f height {f}").read().strip()
+        # HACK the binaries for `vips` and `vipsheader` should be in the same place
+        width = os.popen(f"{VIPS_CMD}header -f width {f}").read().strip()
+        height = os.popen(f"{VIPS_CMD}header -f height {f}").read().strip()
 
         # upload TIFF to S3
         try:
