@@ -12,6 +12,7 @@ import traceback
 from pathlib import Path
 
 import boto3
+import botocore
 import plac
 from bs4 import BeautifulSoup
 from commonpy.network_utils import net
