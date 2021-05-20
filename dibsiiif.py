@@ -24,14 +24,16 @@ def main(barcode: "the barcode of an item to be processed"):
 
     try:
         (
-            STATUS_FILES_DIR,
-            UNPROCESSED_SCANS_DIR,
-            PROCESSED_SCANS_DIR,
-            PROCESSED_IIIF_DIR,
-            MANIFEST_BASE_URL,
             CANVAS_BASE_URL,
             IIIF_BASE_URL,
+            MANIFEST_BASE_URL,
+            MANIFEST_FILES_DIR,
+            PROCESSED_IIIF_DIR,
+            PROCESSED_SCANS_DIR,
             S3_BUCKET,
+            STATUS_FILES_DIR,
+            UNPROCESSED_SCANS_DIR,
+            VIPS_CMD,
         ) = validate_settings()
     except Exception as e:
         # NOTE we cannot guarantee that `STATUS_FILES_DIR` is set
@@ -290,31 +292,39 @@ def missing_numbers(sequence):
 
 
 def validate_settings():
+    CANVAS_BASE_URL = config("CANVAS_BASE_URL").rstrip("/")
+    IIIF_BASE_URL = config("IIIF_BASE_URL").rstrip("/")
+    MANIFEST_BASE_URL = config("MANIFEST_BASE_URL").rstrip("/")
+    MANIFEST_FILES_DIR = directory_setup(
+        os.path.expanduser(config("MANIFEST_FILES_DIR"))
+    ).resolve(strict=True)
+    PROCESSED_IIIF_DIR = directory_setup(
+        os.path.expanduser(config("PROCESSED_IIIF_DIR"))
+    ).resolve(strict=True)
+    PROCESSED_SCANS_DIR = directory_setup(
+        os.path.expanduser(config("PROCESSED_SCANS_DIR"))
+    ).resolve(strict=True)
+    S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
     STATUS_FILES_DIR = Path(os.path.expanduser(config("STATUS_FILES_DIR"))).resolve(
         strict=True
     )  # NOTE do not create missing `STATUS_FILES_DIR`
     UNPROCESSED_SCANS_DIR = directory_setup(
         os.path.expanduser(config("UNPROCESSED_SCANS_DIR"))
     ).resolve(strict=True)
-    PROCESSED_SCANS_DIR = directory_setup(
-        os.path.expanduser(config("PROCESSED_SCANS_DIR"))
-    ).resolve(strict=True)
-    PROCESSED_IIIF_DIR = directory_setup(
-        os.path.expanduser(config("PROCESSED_IIIF_DIR"))
-    ).resolve(strict=True)
-    MANIFEST_BASE_URL = config("MANIFEST_BASE_URL").rstrip("/")
-    CANVAS_BASE_URL = config("CANVAS_BASE_URL").rstrip("/")
-    IIIF_BASE_URL = config("IIIF_BASE_URL").rstrip("/")
-    S3_BUCKET = config("S3_BUCKET")  # TODO validate access to bucket
+    VIPS_CMD = Path(os.path.expanduser(config("VIPS_CMD"))).resolve(
+        strict=True
+    )
     return (
-        STATUS_FILES_DIR,
-        UNPROCESSED_SCANS_DIR,
-        PROCESSED_SCANS_DIR,
-        PROCESSED_IIIF_DIR,
-        MANIFEST_BASE_URL,
         CANVAS_BASE_URL,
         IIIF_BASE_URL,
+        MANIFEST_BASE_URL,
+        MANIFEST_FILES_DIR,
+        PROCESSED_IIIF_DIR,
+        PROCESSED_SCANS_DIR,
         S3_BUCKET,
+        STATUS_FILES_DIR,
+        UNPROCESSED_SCANS_DIR,
+        VIPS_CMD,
     )
 
 
