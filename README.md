@@ -22,3 +22,9 @@ any TIFFs in folders named with the barcode embedded in the status file name.
 
 A small notification utility to send messages to a Slack channel or email
 addresses.
+
+#### Slack Requirements
+
+1. Install and follow configuration instructions for [slack-cli](https://github.com/rockymadden/slack-cli).
+2. Be sure to have a legacy API token in a `~/.slack` file.
+3. Enable Slack and supply a channel in the `notify.ini` file.
