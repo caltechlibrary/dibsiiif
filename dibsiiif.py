@@ -251,7 +251,7 @@ def main(barcode: "the barcode of an item to be processed"):
 
     # save `{barcode}-manifest.json`
     with open(
-        f"{PROCESSED_IIIF_DIR}/{barcode}/{barcode}-manifest.json",
+        f"{MANIFEST_FILES_DIR}/{barcode}-manifest.json",
         "w",
     ) as f:
         f.write(json.dumps(manifest, indent=4))
