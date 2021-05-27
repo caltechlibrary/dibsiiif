@@ -204,7 +204,11 @@ def main(barcode: "the barcode of an item to be processed"):
 
         # upload TIFF to S3
         try:
-            boto3.client("s3").put_object(
+            boto3.client(
+                "s3",
+                aws_access_key_id=config("AWS_ACCESS_KEY"),
+                aws_secret_access_key=config("AWS_SECRET_KEY"),
+            ).put_object(
                 Bucket=S3_BUCKET,
                 Key=f"{barcode}/{f.stem.split('_')[-1]}.tif",
                 Body=open(

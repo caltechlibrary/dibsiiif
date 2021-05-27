@@ -13,6 +13,10 @@ directory into JPEG-compressed, IIIF-compatible Pyramid TIFFs for use with the
 The main script. Includes status file manipulation for DIBS, image conversion,
 metadata retrieval, IIIF manifest generation, and file upload to S3.
 
+#### AWS Requirements
+
+AWS credentials are required and may be added in the `settings.ini` file.
+
 ### `iiifify.sh`
 
 A simple Bash script to check for initialized status files and begin processing
