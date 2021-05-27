@@ -196,7 +196,9 @@ def main(barcode: "the barcode of an item to be processed"):
             != 0
         ):
             print("❌ an error occurred running the vips command")
-            raise RuntimeError(f"{VIPS_CMD} tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256")
+            raise RuntimeError(
+                f"{VIPS_CMD} tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
+            )
         # create canvas metadata
         # HACK the binaries for `vips` and `vipsheader` should be in the same place
         width = os.popen(f"{VIPS_CMD}header -f width {f}").read().strip()
@@ -313,9 +315,7 @@ def validate_settings():
     UNPROCESSED_SCANS_DIR = directory_setup(
         os.path.expanduser(config("UNPROCESSED_SCANS_DIR"))
     ).resolve(strict=True)
-    VIPS_CMD = Path(os.path.expanduser(config("VIPS_CMD"))).resolve(
-        strict=True
-    )
+    VIPS_CMD = Path(os.path.expanduser(config("VIPS_CMD"))).resolve(strict=True)
     return (
         CANVAS_BASE_URL,
         IIIF_BASE_URL,
