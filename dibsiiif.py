@@ -218,7 +218,10 @@ def main(barcode: "the barcode of an item to be processed"):
                     "rb",
                 ),
             )
-            print(f" ✅\t TIFF sent to S3: {barcode}/{f.stem.split('_')[-1]}.tif")
+            print(
+                f" ✅\t TIFF sent to S3: {barcode}/{f.stem.split('_')[-1]}.tif",
+                flush=True,
+            )
         except botocore.exceptions.ClientError as e:
             # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/error-handling.html
             if e.response["Error"]["Code"] == "InternalError":
