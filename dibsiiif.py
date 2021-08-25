@@ -5,17 +5,15 @@
 
 import json
 import os
+import requests
 import shutil
 import subprocess
-import sys
 import traceback
 from pathlib import Path
 
 import boto3
 import botocore
 import plac
-from bs4 import BeautifulSoup
-from commonpy.network_utils import net
 from decouple import config
 
 
@@ -132,34 +130,63 @@ def main(barcode: "the barcode of an item to be processed"):
 
     # retrieve item metadata
     # NOTE barcode validation happens in the DIBS interface
+    # starting from a barcode, we must make 3 requests to get the instance record
     try:
-        (net_response, net_exception) = net(
-            "get",
-            f"https://caltech.tind.io/search?p=barcode%3A{barcode}&of=xm",
-        )
-        if net_exception:
-            raise net_exception
+        FOLIO_API_URL = config("FOLIO_API_URL").rstrip("/")
+        okapi_headers = {'X-Okapi-Tenant':config("FOLIO_API_TENANT"),'x-okapi-token':config("FOLIO_API_TOKEN")}
+
+        items_query = f'{FOLIO_API_URL}/inventory/items?query=barcode%3D%3D{barcode}'
+        items_response = requests.get(items_query, headers=okapi_headers).json()
+
+        if items_response.get('items'):
+            items = items_response['items']
+        if len(items) > 1:
+            raise ValueError("❌ more than one item found for barcode")
+        if items[0].get('holdingsRecordId'):
+            holdingsRecordId = items[0]['holdingsRecordId']
         else:
-            soup = BeautifulSoup(net_response.text, "xml")
-            tag245a = soup.select("[tag='245'] > [code='a']")
-            if tag245a:
-                title = tag245a[0].get_text().strip(" /:;,.")
-            else:
-                raise ValueError(f"❌ title tag was empty for {barcode}; notify Laurel")
-            subtitle = ""
-            tag245b = soup.select("[tag='245'] > [code='b']")
-            if tag245b:
-                subtitle = f": {tag245b[0].get_text().strip(' /:;,.')}"
-            author = ""
-            tag245c = soup.select("[tag='245'] > [code='c']")
-            if tag245c:
-                author = tag245c[0].get_text().strip(" /:;,.")
-            edition = ""
-            tag250a = soup.select("[tag='250'] > [code='a']")
-            if tag250a:
-                edition = tag250a[0].get_text()
-            tag008 = soup.select("[tag='008']")
-            year = tag008[0].get_text()[7:11]
+            raise ValueError("❌ no holdingsRecordId found")
+
+        holdings_query = f'{FOLIO_API_URL}/holdings-storage/holdings/{holdingsRecordId}'
+        holdings_response = requests.get(holdings_query, headers=okapi_headers).json()
+
+        if holdings_response.get('instanceId'):
+            instanceId = holdings_response['instanceId']
+        else:
+            raise ValueError("❌ no instanceId found")
+
+        # NOTE this endpoint returns a record that shows MARC fields
+        instance_query = f'{FOLIO_API_URL}/records-editor/records?instanceId={instanceId}'
+        instance_response = requests.get(instance_query, headers=okapi_headers).json()
+
+        if instance_response.get('fields'):
+            fields = instance_response['fields']
+        else:
+            raise ValueError("❌ no fields found")
+        title = ""
+        author = ""
+        edition = ""
+        year = ""
+        for field in fields:
+            if field['tag'] == '008':
+                if field['content'].get('Date1'):
+                    year = field['content']['Date1']
+            if field['tag'] == '245':
+                # TODO account for many more subfields
+                # https://www.loc.gov/marc/bibliographic/bd245.html
+                if "$a " not in field['content']:
+                    raise ValueError("❌ no title found")
+                if "$c " in field['content']:
+                    subfield_c_position = field['content'].find('$c ')
+                    author = field['content'][subfield_c_position + 3:].strip(' /:;,.')
+                    title = field['content'][3:subfield_c_position].strip(' /:;,.')
+                else:
+                    title = field['content'][3:].strip(' /:;,.')
+                if "$b " in field['content']:
+                    subfield_b_position = field['content'].find('$b ')
+                    title = title[:subfield_b_position - 3] + title[subfield_b_position:]
+            if field['tag'] == '250':
+                edition = field['content'][3:].strip(' /:;,.')
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
@@ -168,7 +195,7 @@ def main(barcode: "the barcode of an item to be processed"):
     # add metadata to manifest
     manifest["label"] = title
     manifest["metadata"] = []
-    manifest["metadata"].append({"label": "Title", "value": f"{title}{subtitle}"})
+    manifest["metadata"].append({"label": "Title", "value": f"{title}"})
     if author:
         manifest["metadata"].append({"label": "Author", "value": author})
     if edition:
