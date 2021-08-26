@@ -40,7 +40,8 @@ def main(barcode: "the barcode of an item to be processed"):
         message = "❌ there was a problem with the settings for the `dibsiiif.py` script"
         print(message)
         # TODO move bash and notify.sh locations into settings.ini
-        subprocess.run(["/bin/bash", "./notify.sh", str(e), message])
+        # NEEDS WORK does not work on production
+        # subprocess.run(["/bin/bash", "./notify.sh", str(e), message])
         raise
 
     # remove `STATUS_FILES_DIR/{barcode}-initiated` file
