@@ -124,7 +124,6 @@ def main(barcode: "the barcode of an item to be processed"):
         "@context": "http://iiif.io/api/presentation/2/context.json",
         "@type": "sc:Manifest",
         "@id": f"{MANIFEST_BASE_URL}/{barcode}",
-        "attribution": "Caltech Library",
         "logo": f"{IIIF_BASE_URL}/logo/full/max/0/default.png",
         "sequences": [{"@type": "sc:Sequence", "canvases": []}],
     }
