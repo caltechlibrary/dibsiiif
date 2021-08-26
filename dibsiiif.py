@@ -13,7 +13,6 @@ from pathlib import Path
 
 import boto3
 import botocore
-import plac
 from decouple import config
 
 
@@ -133,34 +132,39 @@ def main(barcode: "the barcode of an item to be processed"):
     # starting from a barcode, we must make 3 requests to get the instance record
     try:
         FOLIO_API_URL = config("FOLIO_API_URL").rstrip("/")
-        okapi_headers = {'X-Okapi-Tenant':config("FOLIO_API_TENANT"),'x-okapi-token':config("FOLIO_API_TOKEN")}
+        okapi_headers = {
+            "X-Okapi-Tenant": config("FOLIO_API_TENANT"),
+            "x-okapi-token": config("FOLIO_API_TOKEN"),
+        }
 
-        items_query = f'{FOLIO_API_URL}/inventory/items?query=barcode%3D%3D{barcode}'
+        items_query = f"{FOLIO_API_URL}/inventory/items?query=barcode%3D%3D{barcode}"
         items_response = requests.get(items_query, headers=okapi_headers).json()
 
-        if items_response.get('items'):
-            items = items_response['items']
+        if items_response.get("items"):
+            items = items_response["items"]
         if len(items) > 1:
             raise ValueError("❌ more than one item found for barcode")
-        if items[0].get('holdingsRecordId'):
-            holdingsRecordId = items[0]['holdingsRecordId']
+        if items[0].get("holdingsRecordId"):
+            holdingsRecordId = items[0]["holdingsRecordId"]
         else:
             raise ValueError("❌ no holdingsRecordId found")
 
-        holdings_query = f'{FOLIO_API_URL}/holdings-storage/holdings/{holdingsRecordId}'
+        holdings_query = f"{FOLIO_API_URL}/holdings-storage/holdings/{holdingsRecordId}"
         holdings_response = requests.get(holdings_query, headers=okapi_headers).json()
 
-        if holdings_response.get('instanceId'):
-            instanceId = holdings_response['instanceId']
+        if holdings_response.get("instanceId"):
+            instanceId = holdings_response["instanceId"]
         else:
             raise ValueError("❌ no instanceId found")
 
         # NOTE this endpoint returns a record that shows MARC fields
-        instance_query = f'{FOLIO_API_URL}/records-editor/records?instanceId={instanceId}'
+        instance_query = (
+            f"{FOLIO_API_URL}/records-editor/records?instanceId={instanceId}"
+        )
         instance_response = requests.get(instance_query, headers=okapi_headers).json()
 
-        if instance_response.get('fields'):
-            fields = instance_response['fields']
+        if instance_response.get("fields"):
+            fields = instance_response["fields"]
         else:
             raise ValueError("❌ no fields found")
         title = ""
@@ -168,25 +172,27 @@ def main(barcode: "the barcode of an item to be processed"):
         edition = ""
         year = ""
         for field in fields:
-            if field['tag'] == '008':
-                if field['content'].get('Date1'):
-                    year = field['content']['Date1']
-            if field['tag'] == '245':
+            if field["tag"] == "008":
+                if field["content"].get("Date1"):
+                    year = field["content"]["Date1"]
+            if field["tag"] == "245":
                 # TODO account for many more subfields
                 # https://www.loc.gov/marc/bibliographic/bd245.html
-                if "$a " not in field['content']:
+                if "$a " not in field["content"]:
                     raise ValueError("❌ no title found")
-                if "$c " in field['content']:
-                    subfield_c_position = field['content'].find('$c ')
-                    author = field['content'][subfield_c_position + 3:].strip(' /:;,.')
-                    title = field['content'][3:subfield_c_position].strip(' /:;,.')
+                if "$c " in field["content"]:
+                    subfield_c_position = field["content"].find("$c ")
+                    author = field["content"][subfield_c_position + 3 :].strip(" /:;,.")
+                    title = field["content"][3:subfield_c_position].strip(" /:;,.")
                 else:
-                    title = field['content'][3:].strip(' /:;,.')
-                if "$b " in field['content']:
-                    subfield_b_position = field['content'].find('$b ')
-                    title = title[:subfield_b_position - 3] + title[subfield_b_position:]
-            if field['tag'] == '250':
-                edition = field['content'][3:].strip(' /:;,.')
+                    title = field["content"][3:].strip(" /:;,.")
+                if "$b " in field["content"]:
+                    subfield_b_position = field["content"].find("$b ")
+                    title = (
+                        title[: subfield_b_position - 3] + title[subfield_b_position:]
+                    )
+            if field["tag"] == "250":
+                edition = field["content"][3:].strip(" /:;,.")
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
@@ -361,4 +367,5 @@ def validate_settings():
 
 
 if __name__ == "__main__":
-    plac.call(main)
+    # fmt: off
+    import plac; plac.call(main)
