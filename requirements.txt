@@ -5,3 +5,4 @@ lxml==4.6.3
 plac==1.3.3
 python-decouple==3.4
 requests==2.25.1
+slack-sdk==3.11.0

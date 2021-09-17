@@ -4,6 +4,9 @@
 # NOTE: this script should be initiated by the `iiifify.sh` script that runs on cron
 
 import json
+import logging
+import logging.config
+import logging.handlers
 import os
 import requests
 import shutil
@@ -14,6 +17,18 @@ from pathlib import Path
 import boto3
 import botocore
 from decouple import config
+
+from slack_handler import SlackHandler
+
+# add SlackHandler to the logging.handlers namespace
+logging.handlers.SlackHandler = SlackHandler
+
+logging.config.fileConfig(
+    # set the logging configuration in the settings.ini file
+    Path(__file__).parent.absolute().joinpath("settings.ini"),
+    disable_existing_loggers=False,
+)
+logger = logging.getLogger("dibsiiif")
 
 
 def main(barcode: "the barcode of an item to be processed"):
@@ -34,13 +49,9 @@ def main(barcode: "the barcode of an item to be processed"):
         ) = validate_settings()
     except Exception as e:
         # NOTE we cannot guarantee that `STATUS_FILES_DIR` is set
-        # - it must exist if script is started from `initiated.sh`
-        # TODO figure out how to not send a message every minute
+        # - it must exist if script is started from `iiifify.sh`
         message = "❌ there was a problem with the settings for the `dibsiiif.py` script"
-        print(message)
-        # TODO move bash and notify.sh locations into settings.ini
-        # NEEDS WORK does not work on production
-        # subprocess.run(["/bin/bash", "./notify.sh", str(e), message])
+        logger.exception(message)
         raise
 
     # remove `STATUS_FILES_DIR/{barcode}-initiated` file
@@ -51,6 +62,7 @@ def main(barcode: "the barcode of an item to be processed"):
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
+        logger.exception("‼️")
         raise
 
     # create `STATUS_FILES_DIR/{barcode}-processing` file
@@ -59,6 +71,7 @@ def main(barcode: "the barcode of an item to be processed"):
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
+        logger.exception("‼️")
         raise
 
     # validate the `UNPROCESSED_SCANS_DIR/{barcode}` directory
@@ -69,6 +82,7 @@ def main(barcode: "the barcode of an item to be processed"):
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
+        logger.exception("‼️")
         raise
 
     # set up lists of TIFF paths and sequence numbers
@@ -105,6 +119,7 @@ def main(barcode: "the barcode of an item to be processed"):
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
+        logger.exception("‼️")
         raise
 
     # raise exception if the sequence is missing any numbers
@@ -116,6 +131,7 @@ def main(barcode: "the barcode of an item to be processed"):
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
+        logger.exception("‼️")
         raise
 
     # set up manifest
@@ -196,6 +212,7 @@ def main(barcode: "the barcode of an item to be processed"):
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
+        logger.exception("‼️")
         raise
 
     # add metadata to manifest
@@ -214,6 +231,7 @@ def main(barcode: "the barcode of an item to be processed"):
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
+        logger.exception("‼️")
         raise
 
     # loop through sorted list of TIFF paths
@@ -262,6 +280,7 @@ def main(barcode: "the barcode of an item to be processed"):
                 print(f"Request ID: {e.response['ResponseMetadata']['RequestId']}")
                 print(f"HTTP Code: {e.response['ResponseMetadata']['HTTPStatusCode']}")
             else:
+                logger.exception("‼️")
                 raise e
 
         # set up canvas
@@ -305,6 +324,7 @@ def main(barcode: "the barcode of an item to be processed"):
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
+        logger.exception("‼️")
         raise
 
     # remove `STATUS_FILES_DIR/{barcode}-processing` file
@@ -313,6 +333,7 @@ def main(barcode: "the barcode of an item to be processed"):
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
+        logger.exception("‼️")
         raise
 
 
