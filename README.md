@@ -22,13 +22,14 @@ AWS credentials are required and may be added in the `settings.ini` file.
 A simple Bash script to check for initialized status files and begin processing
 any TIFFs in folders named with the barcode embedded in the status file name.
 
-### `notify.sh`
+### `slack_handler.py`
 
-A small notification utility to send messages to a Slack channel or email
-addresses.
+A logging handler to send messages to a Slack channel. Logging configuration is
+saved in the `settings.ini` file. See `example-settings.ini` for details.
+
+TODO: develop a general caltechlibrarylogger package to be used instead.
 
 #### Slack Requirements
 
-1. Install and follow configuration instructions for [slack-cli](https://github.com/rockymadden/slack-cli).
-2. Be sure to have a legacy API token in a `~/.slack` file.
-3. Enable Slack and supply a channel in the `notify.ini` file.
+1. A Slack API OAuth Token.
+2. A Slack channel where messages will be sent.
