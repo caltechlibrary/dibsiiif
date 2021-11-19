@@ -90,23 +90,33 @@ def main(barcode: "the barcode of an item to be processed"):
     sequence = []
     for i in os.scandir(barcode_dir):
         if i.is_file() and i.name.endswith((".tif", ".tiff")):
+            # split by underscores and remove empty strings from the list
+            parts = list(filter(None, i.name.split(".")[0].split("_")))
+            if not 2 <= len(parts) <= 3:
+                print(
+                    f" ⚠️\t unexpected file name encountered: {barcode}/{i.name}"
+                )
+                continue
+            elif not parts[0] == barcode:
+                print(
+                    f" ⚠️\t file name does not begin with barcode: {barcode}/{i.name}"
+                )
+
             # for the case of `35047000000000_001.tif`
             if (
-                len(i.name.split(".")[0].split("_")) == 2
-                and i.name.split(".")[0].split("_")[0] == barcode
-                and i.name.split(".")[0].split("_")[-1].isnumeric()
+                len(parts) == 2
+                and parts[-1].isnumeric()
             ):
                 tiff_paths.append(i.path)
-                sequence.append(int(i.name.split(".")[0].split("_")[-1]))
+                sequence.append(int(parts[-1]))
             # for the case of `35047000000000_Page_001.tif`
             elif (
-                len(i.name.split(".")[0].split("_")) == 3
-                and i.name.split(".")[0].split("_")[0] == barcode
-                and i.name.split(".")[0].split("_")[-1].isnumeric()
-                and i.name.split(".")[0].split("_")[-2] == "Page"
+                len(parts) == 3
+                and parts[-2] == "Page"
+                and parts[-1].isnumeric()
             ):
                 tiff_paths.append(i.path)
-                sequence.append(int(i.name.split(".")[0].split("_")[-1]))
+                sequence.append(int(parts[-1]))
             else:
                 print(
                     f" ⚠️\t unexpected file name format encountered: {barcode}/{i.name}"
@@ -238,17 +248,19 @@ def main(barcode: "the barcode of an item to be processed"):
     tiff_paths.sort()
     for f in tiff_paths:
         f = Path(f)
+        page_num = f.stem.split('_')[-1]
+
         # create compressed pyramid TIFF
         if (
             # TODO use subprocess.run()
             os.system(
-                f"{VIPS_CMD} tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
+                f"{VIPS_CMD} tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{page_num}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
             )
             != 0
         ):
             print("❌ an error occurred running the vips command")
             raise RuntimeError(
-                f"{VIPS_CMD} tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
+                f"{VIPS_CMD} tiffsave {f} {PROCESSED_IIIF_DIR}/{barcode}/{page_num}.tif --tile --pyramid --compression jpeg --tile-width 256 --tile-height 256"
             )
         # create canvas metadata
         # HACK the binaries for `vips` and `vipsheader` should be in the same place
@@ -263,14 +275,14 @@ def main(barcode: "the barcode of an item to be processed"):
                 aws_secret_access_key=config("AWS_SECRET_KEY"),
             ).put_object(
                 Bucket=S3_BUCKET,
-                Key=f"{barcode}/{f.stem.split('_')[-1]}.tif",
+                Key=f"{barcode}/{page_num}.tif",
                 Body=open(
-                    f"{PROCESSED_IIIF_DIR}/{barcode}/{f.stem.split('_')[-1]}.tif",
+                    f"{PROCESSED_IIIF_DIR}/{barcode}/{page_num}.tif",
                     "rb",
                 ),
             )
             print(
-                f" ✅\t TIFF sent to S3: {barcode}/{f.stem.split('_')[-1]}.tif",
+                f" ✅\t TIFF sent to S3: {barcode}/{page_num}.tif",
                 flush=True,
             )
         except botocore.exceptions.ClientError as e:
@@ -286,21 +298,21 @@ def main(barcode: "the barcode of an item to be processed"):
         # set up canvas
         canvas = {
             "@type": "sc:Canvas",
-            "@id": f"{CANVAS_BASE_URL}/{barcode}/{f.stem.split('_')[-1]}",
-            "label": f"{f.stem.split('_')[-1]}",  # sequence portion of filename
+            "@id": f"{CANVAS_BASE_URL}/{barcode}/{page_num}",
+            "label": f"{page_num}",  # sequence portion of filename
             "width": width,
             "height": height,
             "images": [
                 {
                     "@type": "oa:Annotation",
                     "motivation": "sc:painting",
-                    "on": f"{CANVAS_BASE_URL}/{barcode}/{f.stem.split('_')[-1]}",  # same as canvas["@id"]
+                    "on": f"{CANVAS_BASE_URL}/{barcode}/{page_num}",  # same as canvas["@id"]
                     "resource": {
                         "@type": "dctypes:Image",
-                        "@id": f"{IIIF_BASE_URL}/{barcode}%2F{f.stem.split('_')[-1]}/full/max/0/default.jpg",
+                        "@id": f"{IIIF_BASE_URL}/{barcode}%2F{page_num}/full/max/0/default.jpg",
                         "service": {
                             "@context": "http://iiif.io/api/image/2/context.json",
-                            "@id": f"{IIIF_BASE_URL}/{barcode}%2F{f.stem.split('_')[-1]}",
+                            "@id": f"{IIIF_BASE_URL}/{barcode}%2F{page_num}",
                             "profile": "http://iiif.io/api/image/2/level2.json",
                         },
                     },
