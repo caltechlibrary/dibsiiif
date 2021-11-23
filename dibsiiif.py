@@ -92,35 +92,18 @@ def main(barcode: "the barcode of an item to be processed"):
         if i.is_file() and i.name.endswith((".tif", ".tiff")):
             # split by underscores and remove empty strings from the list
             parts = list(filter(None, i.name.split(".")[0].split("_")))
-            if not 2 <= len(parts) <= 3:
+            if not parts[0] == barcode:
+                print(
+                    f" ⚠️\t unexpected file name format encountered: {barcode}/{i.name}"
+                )
+                continue
+            if not parts[-1].isnumeric():
                 print(
                     f" ⚠️\t unexpected file name encountered: {barcode}/{i.name}"
                 )
                 continue
-            elif not parts[0] == barcode:
-                print(
-                    f" ⚠️\t file name does not begin with barcode: {barcode}/{i.name}"
-                )
-
-            # for the case of `35047000000000_001.tif`
-            if (
-                len(parts) == 2
-                and parts[-1].isnumeric()
-            ):
-                tiff_paths.append(i.path)
-                sequence.append(int(parts[-1]))
-            # for the case of `35047000000000_Page_001.tif`
-            elif (
-                len(parts) == 3
-                and parts[-2] == "Page"
-                and parts[-1].isnumeric()
-            ):
-                tiff_paths.append(i.path)
-                sequence.append(int(parts[-1]))
-            else:
-                print(
-                    f" ⚠️\t unexpected file name format encountered: {barcode}/{i.name}"
-                )
+            tiff_paths.append(i.path)
+            sequence.append(int(parts[-1]))
 
     # verify that TIFFs exist in the `{barcode_dir}`
     try:
