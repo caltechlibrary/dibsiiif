@@ -108,7 +108,7 @@ def main(barcode: "the barcode of an item to be processed"):
     # verify that TIFFs exist in the `{barcode_dir}`
     try:
         if not len(tiff_paths):
-            raise ValueError(f"item directory contains no TIFFs: {barcode_dir}")
+            raise ValueError(f"item directory contains no TIFFs with expected file name formatting: {barcode_dir}")
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
