@@ -31,7 +31,7 @@ logging.config.fileConfig(
 logger = logging.getLogger("dibsiiif")
 
 
-def main(barcode: "the barcode of an item to be processed"):
+def main(barcode: "the barcode of an item to be processed"):  # type: ignore
     """Process an item for Caltech Library DIBS."""
 
     try:
