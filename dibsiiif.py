@@ -168,7 +168,7 @@ def main(barcode: "the barcode of an item to be processed"):  # type: ignore
 
         # NOTE this endpoint returns a record that shows MARC fields
         instance_query = (
-            f"{FOLIO_API_URL}/records-editor/records?instanceId={instanceId}"
+            f"{FOLIO_API_URL}/records-editor/records?externalId={instanceId}"
         )
         instance_response = requests.get(instance_query, headers=okapi_headers).json()
 
