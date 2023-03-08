@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# When there are files named *-initiated in the provided directory,
-# run the processing script for the targeted files.
+# Process the oldest -initiated file in the STATUS_FILES_DIR directory
+# Additional files will be processed next time cron calls this script
 
 # CONFIGURATION:
 # - set values in `iiifify.ini`
@@ -10,12 +10,10 @@
 # USAGE:
 # /bin/bash /path/to/this/script.sh
 
-# set the nullglob in case there are no `*-initiated` files
-shopt -s nullglob
-
-# expecting an absolute path as an argument
-for FILE in "$(source "$(dirname "$0")"/iiifify.ini && echo "$STATUS_FILES_DIR")"/*-initiated; do
-    barcode=$(basename "$FILE" | cut -d '-' -f 1)
+status_files_dir=$(source "$(dirname "$0")"/iiifify.ini && echo "$STATUS_FILES_DIR")
+file="$(ls -tr $status_files_dir/*-initiated 2> /dev/null | head -1)"
+if [ -n "$file" ]; then
+    barcode=$(basename "$file" | cut -d '-' -f 1)
     python=$(source "$(dirname "$0")"/iiifify.ini && echo "$PYTHON")
     $python "$(dirname "$0")"/dibsiiif.py "$barcode"
-done
+fi
