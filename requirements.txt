@@ -1,8 +1,4 @@
-boto3==1.17.76
-bs4==0.0.1
-commonpy==1.3.4
-lxml==4.6.3
-plac==1.3.3
-python-decouple==3.4
-requests==2.25.1
-slack-sdk==3.11.0
+boto3==1.43.122
+plac==1.4.7
+python-decouple==3.8
+slack-sdk==3.45.0
