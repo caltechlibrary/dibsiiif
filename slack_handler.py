@@ -8,8 +8,6 @@ class SlackHandler(logging.Handler):
         logging.Handler.__init__(self)
         self.token = token
         self.channel = channel
-        print(self.token)
-        print(self.channel)
         self.slack_client = WebClient(token=self.token)
 
     def emit(self, record):
