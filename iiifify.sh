@@ -11,7 +11,7 @@
 # /bin/bash /path/to/this/script.sh
 
 status_files_dir=$(source "$(dirname "$0")"/iiifify.ini && echo "$STATUS_FILES_DIR")
-file="$(ls -tr $status_files_dir/*-initiated 2> /dev/null | head -1)"
+file="$(ls -tr "$status_files_dir"/*-initiated 2> /dev/null | head -1)"
 if [ -n "$file" ]; then
     barcode=$(basename "$file" | cut -d '-' -f 1)
     python=$(source "$(dirname "$0")"/iiifify.ini && echo "$PYTHON")
