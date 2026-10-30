@@ -8,7 +8,6 @@ import logging
 import logging.config
 import logging.handlers
 import os
-import requests
 import shutil
 import subprocess
 import traceback
@@ -36,6 +35,7 @@ def main(barcode: "the barcode of an item to be processed"):  # type: ignore
 
     try:
         (
+            AWS_REGION,
             CANVAS_BASE_URL,
             IIIF_BASE_URL,
             MANIFEST_BASE_URL,
@@ -63,11 +63,24 @@ def main(barcode: "the barcode of an item to be processed"):  # type: ignore
         logger.exception("‼️")
         raise
 
-    # remove `STATUS_FILES_DIR/{barcode}-initiated` file
-    # NOTE in order to allow the script to be run indpendently of a
-    # wrapper, we should not insist upon the initiated file existing
+    # read and remove `STATUS_FILES_DIR/{barcode}-initiated` file
+    # NOTE DIBS writes the item's metadata into this file; it is removed
+    # before the metadata is checked so that `iiifify.sh` does not run the
+    # script again for a file with bad metadata
     try:
-        Path(STATUS_FILES_DIR).joinpath(f"{barcode}-initiated").unlink(missing_ok=True)
+        initiated_file = Path(STATUS_FILES_DIR).joinpath(f"{barcode}-initiated")
+        metadata_text = initiated_file.read_text(encoding="utf-8")
+        initiated_file.unlink()
+    except Exception as e:
+        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
+            traceback.print_exc(file=f)
+        logger.exception("‼️")
+        raise
+
+    # check the item metadata from DIBS
+    # NOTE using the metadata DIBS has makes the manifest match what DIBS shows
+    try:
+        title, author, edition, year = parsed_metadata(metadata_text, barcode)
     except Exception as e:
         with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
             traceback.print_exc(file=f)
@@ -136,78 +149,6 @@ def main(barcode: "the barcode of an item to be processed"):  # type: ignore
         "sequences": [{"@type": "sc:Sequence", "canvases": []}],
     }
 
-    # retrieve item metadata
-    # NOTE barcode validation happens in the DIBS interface
-    # starting from a barcode, we must make 3 requests to get the instance record
-    try:
-        FOLIO_API_URL = config("FOLIO_API_URL").rstrip("/")
-        okapi_headers = {
-            "X-Okapi-Tenant": config("FOLIO_API_TENANT"),
-            "x-okapi-token": config("FOLIO_API_TOKEN"),
-        }
-
-        items_query = f"{FOLIO_API_URL}/inventory/items?query=barcode%3D%3D{barcode}"
-        items_response = requests.get(items_query, headers=okapi_headers).json()
-
-        if items_response.get("items"):
-            items = items_response["items"]
-        if len(items) > 1:
-            raise ValueError("❌ more than one item found for barcode")
-        if items[0].get("holdingsRecordId"):
-            holdingsRecordId = items[0]["holdingsRecordId"]
-        else:
-            raise ValueError("❌ no holdingsRecordId found")
-
-        holdings_query = f"{FOLIO_API_URL}/holdings-storage/holdings/{holdingsRecordId}"
-        holdings_response = requests.get(holdings_query, headers=okapi_headers).json()
-
-        if holdings_response.get("instanceId"):
-            instanceId = holdings_response["instanceId"]
-        else:
-            raise ValueError("❌ no instanceId found")
-
-        # NOTE this endpoint returns a record that shows MARC fields
-        instance_query = (
-            f"{FOLIO_API_URL}/records-editor/records?externalId={instanceId}"
-        )
-        instance_response = requests.get(instance_query, headers=okapi_headers).json()
-
-        if instance_response.get("fields"):
-            fields = instance_response["fields"]
-        else:
-            raise ValueError("❌ no fields found")
-        title = ""
-        author = ""
-        edition = ""
-        year = ""
-        for field in fields:
-            if field["tag"] == "008":
-                if field["content"].get("Date1"):
-                    year = field["content"]["Date1"]
-            if field["tag"] == "245":
-                # TODO account for many more subfields
-                # https://www.loc.gov/marc/bibliographic/bd245.html
-                if "$a " not in field["content"]:
-                    raise ValueError("❌ no title found")
-                if "$c " in field["content"]:
-                    subfield_c_position = field["content"].find("$c ")
-                    author = field["content"][subfield_c_position + 3 :].strip(" /:;,.")
-                    title = field["content"][3:subfield_c_position].strip(" /:;,.")
-                else:
-                    title = field["content"][3:].strip(" /:;,.")
-                if "$b " in field["content"]:
-                    subfield_b_position = field["content"].find("$b ")
-                    title = (
-                        title[: subfield_b_position - 3] + title[subfield_b_position:]
-                    )
-            if field["tag"] == "250":
-                edition = field["content"][3:].strip(" /:;,.")
-    except Exception as e:
-        with open(Path(STATUS_FILES_DIR).joinpath(f"{barcode}-problem"), "w") as f:
-            traceback.print_exc(file=f)
-        logger.exception("‼️")
-        raise
-
     # add metadata to manifest
     manifest["label"] = title
     manifest["metadata"] = []
@@ -256,6 +197,7 @@ def main(barcode: "the barcode of an item to be processed"):  # type: ignore
                 "s3",
                 aws_access_key_id=config("AWS_ACCESS_KEY"),
                 aws_secret_access_key=config("AWS_SECRET_KEY"),
+                region_name=AWS_REGION,
             ).put_object(
                 Bucket=S3_BUCKET,
                 Key=f"{barcode}/{page_num}.tif",
@@ -347,7 +289,34 @@ def missing_numbers(sequence):
     return [x for x in range(sequence[0], sequence[-1] + 1) if x not in sequence]
 
 
+def parsed_metadata(text, barcode):
+    """Return title, author, edition, and year from the JSON DIBS wrote."""
+    if not text.strip():
+        raise ValueError(
+            "❌ the initiated file is empty; expected item metadata from DIBS"
+        )
+    try:
+        metadata = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"❌ the initiated file is not valid JSON: {e}") from e
+    if not isinstance(metadata, dict):
+        raise ValueError("❌ the initiated file does not contain a JSON object")
+    if metadata.get("barcode") != barcode:
+        raise ValueError(
+            f"❌ the initiated file is for barcode {metadata.get('barcode')}"
+        )
+    if not metadata.get("title"):
+        raise ValueError("❌ the initiated file has no title")
+    return (
+        metadata["title"],
+        metadata.get("author") or "",
+        metadata.get("edition") or "",
+        metadata.get("year") or "",
+    )
+
+
 def validate_settings():
+    AWS_REGION = config("AWS_REGION")
     CANVAS_BASE_URL = config("CANVAS_BASE_URL").rstrip("/")
     IIIF_BASE_URL = config("IIIF_BASE_URL").rstrip("/")
     MANIFEST_BASE_URL = config("MANIFEST_BASE_URL").rstrip("/")
@@ -369,6 +338,7 @@ def validate_settings():
     ).resolve(strict=True)
     VIPS_CMD = Path(os.path.expanduser(config("VIPS_CMD"))).resolve(strict=True)
     return (
+        AWS_REGION,
         CANVAS_BASE_URL,
         IIIF_BASE_URL,
         MANIFEST_BASE_URL,
